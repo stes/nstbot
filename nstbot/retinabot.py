@@ -248,6 +248,9 @@ class RetinaBot(nstbot.NSTBot):
                 self.count_regions[k] = new_count, t
 
         if self.track_periods is not None:
+
+            regions = [[0,64,0,128], [65, 128, 0, 128]]
+
             t = data[2::packet_size].astype(np.uint32)
             t = (t << 8) + data[3::packet_size]
             if packet_size >= 5:
@@ -263,18 +266,25 @@ class RetinaBot(nstbot.NSTBot):
                 dt = 1
             self.last_timestamp = t[-1]
 
-            index_off = (data[1::packet_size] & 0x80) == 0
-
-            delta = np.where(index_off, t - self.last_off[x, y], 0)
-
-            self.last_off[x[index_off],
-                         y[index_off]] = t[index_off]
-
-            tau = 0.05 * 1000000
-            decay = np.exp(-dt/tau)
-            self.track_certainty *= decay
 
             for i, period in enumerate(self.track_periods):
+                
+                index_off = (data[1::packet_size] & 0x80) == 0
+
+                [minx, maxx, miny, maxy] = regions[i % 2]
+                
+                index_off = index_off & (minx <= x) & (x<maxx) & (miny <= y) & (y<maxy)
+                
+                delta = np.where(index_off, t - self.last_off[x, y], 0)
+
+                self.last_off[x[index_off],
+                             y[index_off]] = t[index_off]
+
+                tau = 0.05 * 1000000
+                decay = np.exp(-dt/tau)
+                self.track_certainty *= decay
+
+
                 eta = self.track_eta
                 t_exp = period * 2
                 sigma_t = self.track_sigma_t    # in microseconds
