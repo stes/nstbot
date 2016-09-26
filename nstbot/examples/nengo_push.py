@@ -2,7 +2,8 @@ import nengo
 import nstbot
 
 bot = nstbot.PushBot()
-bot.connect(nstbot.Socket('10.162.177.88'))
+#bot.connect(nstbot.Socket('10.162.177.88'))
+bot.connect(nstbot.Socket('10.162.177.94'))
 bot.retina(True)
 bot.laser(100)
 bot.track_frequencies([100, 100])
@@ -56,10 +57,10 @@ with model:
     
     nengo.Connection(turn_neurons, bot_c, synapse = 0.1)
     
-    left_point = nengo.Node([bot.p_x[0], bot.p_y[0]])
-    right_point = nengo.Node([bot.p_x[1], bot.p_y[1]])
+    left_point = nengo.Node(lambda t: [bot.p_x[0], bot.p_y[0]])
+    right_point = nengo.Node(lambda t: [bot.p_x[1], bot.p_y[1]])
     
-    y_coord = nengo.Ensemble(100, dimensions=2)
+    y_coord = nengo.Ensemble(100, dimensions=2, radius = 1.4)
     
     nengo.Connection(left_point[1], y_coord[0], transform=1.0/128)
     
@@ -67,9 +68,10 @@ with model:
     
     def collide(x):
         av = (x[0] + x[1])/2.0
-        if av > 0.8:
+        if av > 0.6:
             return -0.2, -0.2
         else:
             return 0.2, 0.2
     
     nengo.Connection(y_coord, trans_neurons, function=collide)
+    
