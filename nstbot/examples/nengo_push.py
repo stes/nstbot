@@ -30,7 +30,7 @@ with model:
     turn = nengo.Node([0])
 
     def bot_control(t, x):
-        bot.motor(x[0], x[1])
+        bot.motor(x[0], x[1], msg_period=0.1)
     bot_c = nengo.Node(bot_control, size_in=2)
 
     #nengo.Connection(motors, bot_c)
