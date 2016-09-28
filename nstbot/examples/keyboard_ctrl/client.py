@@ -40,18 +40,36 @@ with model:
                 time.sleep(0.001)
                 c = readchar.readchar()
                 if c.lower() == '8':
+                    # drive forward
                     self.value[0] = 1
                 if c.lower() == '2':
+                    # drive backward
                     self.value[0] = -1
-                if c.lower() == '4':
-                    self.value[1] = 1
                 if c.lower() == '6':
+                    # turn right
+                    self.value[1] = 1
+                if c.lower() == '4':
+                    # turn left
                     self.value[1] = -1
+                if c.lower() == '7':
+                    # drive left curve forward
+                    self.value[0] = 0.5
+                    self.value[1] = -0.5
+                if c.lower() == '9':
+                    # drive right curve forward
+                    self.value[0] = 0.5
+                    self.value[1] = 0.5
+                if c.lower() == '1':
+                    # drive left curve backward
+                    self.value[0] = -1
+                    self.value[1] = 0.5
+                if c.lower() == '3':
+                    # drive right curve backward
+                    self.value[0] = -1
+                    self.value[1] = -0.5
                 if c.lower() == 'q':
                     self.value = None
                 self.last_key_time = timeit.default_timer()
-
-
 
 
         def reset_thread(self):
@@ -68,7 +86,6 @@ with model:
     keybd = Keyboard()
 
     nengo.Connection(keybd, sender, synapse=None)
-
 
 
 sim = nengo.Simulator(model)
