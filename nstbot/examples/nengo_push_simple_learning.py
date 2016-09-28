@@ -73,7 +73,7 @@ with model:
     def init_func(x):
         return 0
     learn_conn = nengo.Connection(y_coord, trans_neurons, function=init_func,
-                                  learning_rule_type=nengo.PES(learning_rate=1e-5/scale, pre_tau=0.005*scale),synapse=0.05*scale)
+                                  learning_rule_type=nengo.PES(learning_rate=1e-4/scale, pre_tau=0.005*scale),synapse=0.05*scale)
 
     # connection from error population to the learning rule of the learning connection
     nengo.Connection(error, learn_conn.learning_rule, synapse=0.005*scale)
