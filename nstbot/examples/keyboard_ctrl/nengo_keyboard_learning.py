@@ -48,8 +48,8 @@ with model:
     turn_neurons = nengo.Ensemble(100,1)
 
     motors_neurons = nengo.Ensemble(200,2)
-    desired_trans_neurons = nengo.Ensemble(100,1)
-    desired_turn_neurons = nengo.Ensemble(100,1)
+    desired_trans_neurons = nengo.Ensemble(200,1)
+    desired_turn_neurons = nengo.Ensemble(200,1)
 
     nengo.Connection(udp.hack[0], desired_trans_neurons, synapse=None)
     nengo.Connection(udp.hack[1], desired_turn_neurons, synapse=None)
@@ -65,44 +65,41 @@ with model:
     #here comes the learning part
 
     # create a neuron ensemble to represent the error between desired and calculated speed values 
-    trans_error = nengo.Ensemble(n_neurons=100, dimensions=1)
+    trans_error = nengo.Ensemble(n_neurons=200, dimensions=1)
 
     # create a neuron ensemble to represent the error between desired and calculated speed values 
-    turn_error = nengo.Ensemble(n_neurons=100, dimensions=1)
+    turn_error = nengo.Ensemble(n_neurons=200, dimensions=1)
 
     # create a node to control (i.e. start or stop) learning
     stop_learn = nengo.Node(1)
     # connect the node to the error neurons with a large inhibitory connection
-    nengo.Connection(stop_learn, trans_error.neurons, transform=-10*np.ones((100,1)))
+    nengo.Connection(stop_learn, trans_error.neurons, transform=-10*np.ones((200,1)))
 
     # connect the node to the error neurons with a large inhibitory connection
-    nengo.Connection(stop_learn, turn_error.neurons, transform=-10*np.ones((100,1)))
+    nengo.Connection(stop_learn, turn_error.neurons, transform=-10*np.ones((200,1)))
 
-    # neuron ensemble to represent the y-coordinates of both laser points
-    y_coord = nengo.Ensemble(200, dimensions=4, radius=1.4)
-
-    # neuron ensemble to represent the y-coordinates of both laser points
-    x_coord = nengo.Ensemble(200, dimensions=4, radius=1.4)
-
+    # neuron ensemble to represent the coordinates of both laser points
+    points_ensemble = nengo.Ensemble(200*8, dimensions=8, radius=1.4)
+    
     # putting both points in one node, since two seperate nodes feeding one population seems to cause a bug in nengo_spinnaker
     both_points = nengo.Node(lambda t: [bot.p_x[0], bot.p_y[0], bot.p_x[1], bot.p_y[1]])
 
     # feeding the y-coordinates of both points to be represented in the y_coord neuron ensemble
-    nengo.Connection(both_points[[1,3]], y_coord[:2], transform = 1.0/128, synapse=0.005*scale)
+    nengo.Connection(both_points[[1,3]], points_ensemble[:2], transform = 1.0/128, synapse=0.005*scale)
 
     # do a recurrent connection to have the sensor input from some time ago to make the input for learning richer
-    nengo.Connection(y_coord[:2], y_coord[2:], synapse=0.005*scale)
+    nengo.Connection(points_ensemble[:2], points_ensemble[2:4], synapse=0.05*scale, transform=0.95)
 
     # feeding the x-coordinates of both points to be represented in the y_coord neuron ensemble
-    nengo.Connection(both_points[[0,2]], x_coord[:2], transform = 1.0/128, synapse=0.005*scale)
+    nengo.Connection(both_points[[0,2]], points_ensemble[4:6], transform = 1.0/128, synapse=0.005*scale)
 
      # do a recurrent connection to have the sensor input from some time ago to make the input for learning richer
-    nengo.Connection(x_coord[:2], x_coord[2:], synapse=0.005*scale)
+    nengo.Connection(points_ensemble[4:6], points_ensemble[6:8], synapse=0.05*scale, transform=0.95)
 
     #establish the learning connection with zero function as inital function 
     def init_func(x):
         return 0
-    trans_learn_conn = nengo.Connection(y_coord, trans_neurons, function=init_func,
+    trans_learn_conn = nengo.Connection(points_ensemble, trans_neurons, function=init_func,
                                   learning_rule_type=nengo.PES(learning_rate=1e-4/scale, pre_tau=0.005*scale),synapse=0.05*scale)
 
     # connection from error population to the learning rule of the learning connection
@@ -111,7 +108,7 @@ with model:
     nengo.Connection(desired_trans_neurons, trans_error, transform=-1, synapse=0.05*scale)
     nengo.Connection(trans_neurons, trans_error, transform=1, synapse=0.005*scale)
     
-    turn_learn_conn = nengo.Connection(y_coord, turn_neurons, function=init_func,
+    turn_learn_conn = nengo.Connection(points_ensemble, turn_neurons, function=init_func,
                                   learning_rule_type=nengo.PES(learning_rate=1e-4/scale, pre_tau=0.005*scale),synapse=0.05*scale)
 
     # connection from error population to the learning rule of the learning connection
@@ -119,15 +116,3 @@ with model:
 
     nengo.Connection(desired_turn_neurons, turn_error, transform=-1, synapse=0.05*scale)
     nengo.Connection(turn_neurons, turn_error, transform=1, synapse=0.005*scale)
-
-    trans_learn_conn_x = nengo.Connection(x_coord, trans_neurons, function=init_func,
-                                  learning_rule_type=nengo.PES(learning_rate=1e-4/scale, pre_tau=0.005*scale),synapse=0.05*scale)
-
-    # connection from error population to the learning rule of the learning connection
-    nengo.Connection(trans_error, trans_learn_conn_x.learning_rule, synapse=0.005*scale)
-    
-    turn_learn_conn_x = nengo.Connection(x_coord, turn_neurons, function=init_func,
-                                  learning_rule_type=nengo.PES(learning_rate=1e-4/scale, pre_tau=0.005*scale),synapse=0.05*scale)
-
-    # connection from error population to the learning rule of the learning connection
-    nengo.Connection(turn_error, turn_learn_conn_x.learning_rule, synapse=0.005*scale)
