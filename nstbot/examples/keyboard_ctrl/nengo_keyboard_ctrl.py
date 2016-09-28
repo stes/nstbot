@@ -48,7 +48,7 @@ with model:
     turn_neurons = nengo.Ensemble(100,1)
 
     nengo.Connection(udp.hack[0], trans_neurons, synapse=None)
-    nengo.Connection(udp.hack[1], ang_neurons, synapse=None)
+    nengo.Connection(udp.hack[1], turn_neurons, synapse=None)
 
     motors_neurons = nengo.Ensemble(200,2)
     nengo.Connection(motors_neurons, bot_c)
