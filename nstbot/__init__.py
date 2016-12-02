@@ -1,6 +1,7 @@
 from .retinabot import RetinaBot
 from .pushbot import PushBot
 from .ev3bot import EV3Bot
+from .omniarm import OmniArmBot
 from . import connection
 from .connection import Socket, Serial
 import nengo
