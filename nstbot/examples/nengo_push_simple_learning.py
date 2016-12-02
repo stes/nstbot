@@ -9,7 +9,7 @@ scale=1.0
 #scale=3.0
 
 bot = nstbot.PushBot()
-bot.connect(nstbot.Socket('10.162.177.88'))
+bot.connect(nstbot.Socket('10.162.177.89'))
 #bot.connect(nstbot.Socket('10.162.177.94'))
 bot.retina(True)
 bot.laser(100)

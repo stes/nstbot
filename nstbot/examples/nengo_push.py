@@ -1,8 +1,15 @@
 import nengo
 import nstbot
 
+# use scale factor 1.0 when running this script with the nengo backend
+#scale=1.0
+# use scale factor 1.0 when running this script with the nengo_spinnaker backend 
+#(slows down synapses to avoid delay between sensor and motor training input)
+scale=3.0
+
+
 bot = nstbot.PushBot()
-bot.connect(nstbot.Socket('10.162.177.88'))
+bot.connect(nstbot.Socket('10.162.177.89'))
 #bot.connect(nstbot.Socket('10.162.177.94'))
 bot.retina(True)
 bot.laser(100)
@@ -46,25 +53,25 @@ with model:
     turn_neurons = nengo.Ensemble(100,1)
 
     motors_neurons = nengo.Ensemble(200,2)
-    nengo.Connection(motors_neurons, bot_c)
+    nengo.Connection(motors_neurons, bot_c, synapse=0.005*scale)
     
-    nengo.Connection(trans_speed, trans_neurons)
+    nengo.Connection(trans_speed, trans_neurons, synapse=0.005*scale)
     
-    nengo.Connection(trans_neurons, motors_neurons, function=trans_func, synapse=0.1)
+    nengo.Connection(trans_neurons, motors_neurons, function=trans_func, synapse=0.005*scale)
     
     nengo.Connection(ang_speed, ang_neurons)
     
-    nengo.Connection(ang_neurons, motors_neurons, function=ang_func, synapse=0.1)
+    nengo.Connection(ang_neurons, motors_neurons, function=ang_func, synapse=0.005*scale)
 
     nengo.Connection(turn, turn_neurons)
     
-    nengo.Connection(turn_neurons, motors_neurons, function=turn_func, synapse=0.1)
+    nengo.Connection(turn_neurons, motors_neurons, function=turn_func, synapse=0.005*scale)
 
     # neuron ensemble to represent the y-coordinates of both laser points
     y_coord = nengo.Ensemble(100, dimensions=2, radius=1.4)
 
     # neuron ensemble to represent the x-coordinates of both laser points
-    x_coord = nengo.Ensemble(100, dimensions=2, radius=1.4)
+    #x_coord = nengo.Ensemble(100, dimensions=2, radius=1.4)
     
     # old buggy version with two nodes feeding into one ensemble (works with nengo backend, but does not with nengo_spinnaker)
     #left_point = nengo.Node(lambda t: [bot.p_x[0], bot.p_y[0]])
@@ -76,7 +83,7 @@ with model:
     both_points = nengo.Node(lambda t: [bot.p_x[0], bot.p_y[0], bot.p_x[1], bot.p_y[1]])
 
     # feeding the y-coordinates of both points to be represented in the y_coord neuron ensemble
-    nengo.Connection(both_points[[1,3]], y_coord, transform = 1.0/128)
+    nengo.Connection(both_points[[1,3]], y_coord, transform = 1.0/128, synapse=0.005*scale)
 
     # feeding the x-coordinates of both points to be represented in the x_coord neuron ensemble
     #nengo.Connection(both_points[[0,2]], x_coord, transform = 1.0/128)
@@ -93,7 +100,7 @@ with model:
         else:
             return 0.5
 
-    nengo.Connection(y_coord, trans_neurons, function=obstacle_backoff)
+    nengo.Connection(y_coord, trans_neurons, function=obstacle_backoff, synapse=0.005*scale)
 
     def obstacle_turn(x):
         av = (x[0] + x[1])/2.0
@@ -105,7 +112,7 @@ with model:
         else:
             return 0.0
 
-    nengo.Connection(y_coord, turn_neurons, function=obstacle_turn)
+    nengo.Connection(y_coord, turn_neurons, function=obstacle_turn, synapse=0.005*scale)
 
     #sim = nengo.Simulator(model)
     #sim.run(2.0)
