@@ -15,16 +15,23 @@ class OmniArmBot(nstbot.NSTBot):
         self.sensor = {}
         self.sensor_scale = {}
         self.sensor_map = {}
-        # self.add_sensor('bump', bit=0, range=32768, length=1)
+        self.add_sensor('bump', bit=0, range=32768, length=1)
         self.add_sensor('wheel', bit=1, range=32768, length=8) # we take only the first 3 vals (base motors)
-        self.add_sensor('gyro', bit=2, range=32768, length=4) # we take only the first 3 vals (x, y, z)
-        self.add_sensor('accel', bit=3, range=32768, length=3)
-        self.add_sensor('euler', bit=4, range=32768, length=4) # we take only the first 3 vals (x, y, z)
-        self.add_sensor('compass', bit=5, range=32768, length=3)
+        self.add_sensor('gyro', bit=2, range=1, length=4) # we take only the first 3 vals (x, y, z)
+        self.add_sensor('accel', bit=3, range=1, length=3)
+        self.add_sensor('euler', bit=4, range=1, length=4) # we take only the first 3 vals (x, y, z)
+        self.add_sensor('compass', bit=5, range=1, length=3)
         self.add_sensor('servo', bit=7, range=32768, length=8) # we only take the last 5 (arm motors)
         self.add_sensor('load', bit=9, range=32768, length=8)# we only take the last 5 (arm motors)
-        self.sensor_bitmap = {"wheel": [17,slice(0, 3)], "gyro": [4,slice(0, 3)], "accel": [5, slice(0,3)], "euler": [9, slice(0,3)], "compass": [6, slice(0, 3)], "servo": [16, slice(4, 8)], "load": [14, slice(4, 8)]}
-        # self.sensor_bitmap = {"bump": [19, slice(0, 1)], "wheel": [17,slice(0, 3)], "gyro": [4,slice(0, 3)], "accel": [5, slice(0,3)], "euler": [9, slice(0,3)], "compass": [6, slice(0, 3)], "servo": [16, slice(4, 8)], "load": [14, slice(4, 8)]}
+        # self.sensor_bitmap = {"wheel": [17,slice(0, 3)], "gyro": [4,slice(0, 3)], "accel": [5, slice(0,3)], "euler": [9, slice(0,3)], "compass": [6, slice(0, 3)], "servo": [16, slice(4, 8)], "load": [14, slice(4, 8)]}
+        self.sensor_bitmap = {"bump": [19, slice(0, 1)],
+                              "wheel": [17,slice(0, 3)],
+                              "gyro": [4,slice(0, 3)],
+                              "accel": [5, slice(0,3)],
+                              "euler": [9, slice(0,3)],
+                              "compass": [6, slice(0, 3)],
+                              "servo": [16, slice(3, 8)],
+                              "load": [14, slice(3, 8)]}
         self.motor(0, 0, 0)
         #self.arm(0.184, 0.172, 0.394, 0.052, 0.134)
 
@@ -77,14 +84,13 @@ class OmniArmBot(nstbot.NSTBot):
         cmd = '!I1,%d,%d\n' % (int(1.0/period), bits)
         self.connection.send(cmd)
 
-
     def get_sensor(self, name):
         return self.sensor[name]
 
     def connect(self, connection):
         super(OmniArmBot, self).connect(connection)
-        #self.connection.send('R\n')
-        time.sleep(1)
+        # self.connection.send('!E2\n')
+        # time.sleep(1)
         thread = threading.Thread(target=self.sensor_loop)
         thread.daemon = True
         thread.start()
@@ -234,8 +240,11 @@ class OmniArmBot(nstbot.NSTBot):
 
             # and process the ascii events too
             while '\n\n' in buffered_ascii:
-                cmd, buffered_ascii = buffered_ascii.split('\n\n')
-                self.process_ascii(cmd)
+                cmd, buffered_ascii = buffered_ascii.split('\n\n', 1)
+                if '-I' in cmd:
+                    dbg, proc_cmd = cmd.split('-I', 1)
+                    self.process_ascii('-I'+proc_cmd)
+
 
     def process_ascii(self, message):
         try:
@@ -254,7 +263,10 @@ class OmniArmBot(nstbot.NSTBot):
                             sliced = value[1]
                             index = self.sensor_map[name]
                             scale = self.sensor_scale[index]
-                            sensors = [float.fromhex(x)*scale for x in vals[sliced]]
+                            if scale == 1:
+                                sensors = [float.fromhex(x) for x in vals[sliced]]
+                            else:
+                                sensors = [float(x)*scale for x in vals[sliced]]
                             self.sensor[index] = sensors
                             self.sensor[self.sensor_map[index]] = sensors
         except:
