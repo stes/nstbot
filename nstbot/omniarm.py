@@ -15,14 +15,15 @@ class OmniArmBot(nstbot.NSTBot):
         self.sensor = {}
         self.sensor_scale = {}
         self.sensor_map = {}
-        self.add_sensor('bump', bit=0, range=32768, length=1)
-        self.add_sensor('wheel', bit=1, range=32768, length=8) # we take only the first 3 vals (base motors)
-        self.add_sensor('gyro', bit=2, range=1, length=4) # we take only the first 3 vals (x, y, z)
-        self.add_sensor('accel', bit=3, range=1, length=3)
-        self.add_sensor('euler', bit=4, range=1, length=4) # we take only the first 3 vals (x, y, z)
-        self.add_sensor('compass', bit=5, range=1, length=3)
-        self.add_sensor('servo', bit=7, range=32768, length=8) # we only take the last 5 (arm motors)
-        self.add_sensor('load', bit=9, range=32768, length=8)# we only take the last 5 (arm motors)
+        self.add_sensor('bump', bit=0, range=1, length=1)
+        self.add_sensor('wheel', bit=1, range=100, length=8) # we take only the first 3 vals (base motors)
+        # the hex encoded values need conversion
+        self.add_sensor('gyro', bit=2, range=2**32-1, length=4) # we take only the first 3 vals (x, y, z)
+        self.add_sensor('accel', bit=3, range=2**32-1, length=3)
+        self.add_sensor('euler', bit=4, range=2**32-1, length=4) # we take only the first 3 vals (x, y, z)
+        self.add_sensor('compass', bit=5, range=2**32-1, length=3)
+        self.add_sensor('servo', bit=7, range=4096, length=8) # we only take the last 5 (arm motors)
+        self.add_sensor('load', bit=9, range=4096, length=8)# we only take the last 5 (arm motors)
         # self.sensor_bitmap = {"wheel": [17,slice(0, 3)], "gyro": [4,slice(0, 3)], "accel": [5, slice(0,3)], "euler": [9, slice(0,3)], "compass": [6, slice(0, 3)], "servo": [16, slice(4, 8)], "load": [14, slice(4, 8)]}
         self.sensor_bitmap = {"bump": [19, slice(0, 1)],
                               "wheel": [17,slice(0, 3)],
@@ -36,7 +37,7 @@ class OmniArmBot(nstbot.NSTBot):
         #self.arm(0.184, 0.172, 0.394, 0.052, 0.134)
 
     def motor(self, x, y, rot, msg_period=None):
-        vrange = 70
+        vrange = 100
         x = int(x * vrange)
         y = int(y * vrange)
         rot = int(rot * vrange)
@@ -57,6 +58,7 @@ class OmniArmBot(nstbot.NSTBot):
         vrange = 4096
         min_pos = np.array([630, 250, 1100, 0, 550])
         max_pos = np.array([2700, 2700, 3000, 600, 1000])
+
         joints = (np.array([j1, j2, j3, j4, j5]) * vrange).astype(dtype=np.int)
 
         # apply limits
@@ -263,8 +265,9 @@ class OmniArmBot(nstbot.NSTBot):
                             sliced = value[1]
                             index = self.sensor_map[name]
                             scale = self.sensor_scale[index]
-                            if scale == 1:
-                                sensors = [float.fromhex(x) for x in vals[sliced]]
+                            # FIXME Check the correct ranges and conversions
+                            if scale < 1./6000 or name is not 'bump':
+                                sensors = [float.fromhex(x)*scale for x in vals[sliced]]
                             else:
                                 sensors = [float(x)*scale for x in vals[sliced]]
                             self.sensor[index] = sensors
