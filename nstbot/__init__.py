@@ -5,4 +5,4 @@ from .omniarm import OmniArmBot
 from . import connection
 from .connection import Socket, Serial
 import nengo
-from nengo.pushbot_network import PushBotNetwork
+from nengo.omnibot_network import OmniArmBotNetwork

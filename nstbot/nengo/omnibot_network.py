@@ -10,7 +10,7 @@ class BaseNode(nengo.Node):
         self.msg_period = msg_period
 
     def move_base(self, t, x):
-        self.bot.base_pos(x[0], x[1], x[2], msg_period=self.msg_period)
+        self.bot.base(x[0], x[1], x[2], msg_period=self.msg_period)
 
 class ArmNode(nengo.Node):
     def __init__(self, bot, msg_period):

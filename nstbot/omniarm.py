@@ -106,8 +106,8 @@ class OmniArmBot(nstbot.NSTBot):
 
     def connect(self, connection):
         super(OmniArmBot, self).connect(connection)
-        # self.connection.send('!E2\n')
-        # time.sleep(1)
+        self.connection.send('R\n')
+        self.connection.send('!E0\n')
         thread = threading.Thread(target=self.sensor_loop)
         thread.daemon = True
         thread.start()
