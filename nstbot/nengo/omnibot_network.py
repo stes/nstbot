@@ -3,32 +3,23 @@ import numpy as np
 
 import nstbot
 
-class MotorNode(nengo.Node):
+class BaseNode(nengo.Node):
     def __init__(self, bot, msg_period):
-        super(MotorNode, self).__init__(self.motor, size_in=2, size_out=0)
+        super(BaseNode, self).__init__(self.move_base, size_in=3, size_out=0)
         self.bot = bot
         self.msg_period = msg_period
 
-    def motor(self, t, x):
-        self.bot.motor(x[0], x[1], msg_period=self.msg_period)
+    def move_base(self, t, x):
+        self.bot.base_pos(x[0], x[1], x[2], msg_period=self.msg_period)
 
-class LaserNode(nengo.Node):
+class ArmNode(nengo.Node):
     def __init__(self, bot, msg_period):
-        super(LaserNode, self).__init__(self.laser, size_in=1, size_out=0)
+        super(ArmNode, self).__init__(self.move_arm, size_in=5, size_out=0)
         self.bot = bot
         self.msg_period = msg_period
 
-    def laser(self, t, x):
-        self.bot.laser(x[0] * 1000, msg_period=self.msg_period)
-
-class BeepNode(nengo.Node):
-    def __init__(self, bot, msg_period):
-        super(BeepNode, self).__init__(self.beep, size_in=1, size_out=0)
-        self.bot = bot
-        self.msg_period = msg_period
-
-    def beep(self, t, x):
-        self.bot.beep(x[0] * 1000, msg_period=self.msg_period)
+    def move_arm(self, t, x):
+        self.bot.arm(x[0], x[1], x[2], x[3], x[4], msg_period=self.msg_period)
 
 class RetinaNode(nengo.Node):
     def __init__(self, bot, msg_period):
@@ -71,19 +62,17 @@ class SensorNode(nengo.Node):
 
 class OmniArmBotNetwork(nengo.Network):
     def __init__(self, connection, msg_period=0.01, label='OmniArmBot',
-                 motor=False, laser=False, retina=False, freqs=[],
-                 beep=False, **sensors):
+                 base=False, arm=False, retina=False, freqs=[],
+                 **sensors):
         super(OmniArmBotNetwork, self).__init__(label=label)
         self.bot = nstbot.OmniArmBot()
         self.bot.connect(connection)
 
         with self:
-            if motor:
-                self.motor = MotorNode(self.bot, msg_period=msg_period)
-            if laser:
-                self.laser = LaserNode(self.bot, msg_period=msg_period)
-            if beep:
-                self.beep = BeepNode(self.bot, msg_period=msg_period)
+            if base:
+                self.base = BaseNode(self.bot, msg_period=msg_period)
+            if arm:
+                self.arm = ArmNode(self.bot, msg_period=msg_period)
             if retina or freqs:
                 self.bot.retina(True)
                 if retina:

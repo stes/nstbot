@@ -6,16 +6,16 @@ import nengo
 model = nengo.Network()
 with model:
     bot = nstbot.OmniArmBotNetwork(
-            nstbot.Socket('10.162.177.135'),
-            motor=True, laser=True, retina=False, #freqs=[100, 200, 300],
-            beep=True, #accel=True, quaternion=True,
+            nstbot.Socket('10.162.177.29'),
+            base=True, arm=True, retina=False, #freqs=[100, 200, 300],
+            accel=True, bump=True, wheel=True, euler=True, servo=True, load=True, 
             compass=True, gyro=True, msg_period=0.01)
 
 
     #nengo.Connection(stim, bot.motor[0])
-    motor = nengo.Node([0,0])
-    nengo.Connection(motor, bot.motor)
+    ctrl_base = nengo.Node([0,0,0])
+    nengo.Connection(ctrl_base, bot.base)
 
-    beep = nengo.Node([0])
-    nengo.Connection(beep, bot.beep)
+    ctrl_arm = nengo.Node([0,0,0,0,0])
+    nengo.Connection(ctrl_arm, bot.arm)
 
