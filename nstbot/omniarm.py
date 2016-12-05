@@ -33,10 +33,25 @@ class OmniArmBot(nstbot.NSTBot):
                               "compass": [6, slice(0, 3)],
                               "servo": [16, slice(3, 8)],
                               "load": [14, slice(3, 8)]}
-        self.motor(0, 0, 0)
+        self.base(0, 0, 0)
         #self.arm(0.184, 0.172, 0.394, 0.052, 0.134)
 
-    def motor(self, x, y, rot, msg_period=None):
+    def base(self, x, y, z, msg_period=None):
+        vrange = 100
+        x = int(x * vrange)
+        y = int(y * vrange)
+        z = int(z * vrange)
+
+        if x > vrange: x = vrange
+        if x < -vrange: x = -vrange
+        if y > vrange: y = vrange
+        if y < -vrange: y = -vrange
+        if z > vrange: rot = vrange
+        if z < -vrange: rot = -vrange
+        cmd = '!P0%d\n!P1%d\n!P2%d\n' % (x, y, z)
+        self.send('base', cmd, msg_period=msg_period)
+
+    def base_pos(self, x, y, rot, msg_period=None):
         vrange = 100
         x = int(x * vrange)
         y = int(y * vrange)
@@ -49,7 +64,7 @@ class OmniArmBot(nstbot.NSTBot):
         if rot > vrange: rot = vrange
         if rot < -vrange: rot = -vrange
         cmd = '!D%d,%d,%d\n' % (x, y, rot)
-        self.send('motor', cmd, msg_period=msg_period)
+        self.send('base_pos', cmd, msg_period=msg_period)
 
     def arm(self, j1, j2, j3, j4, j5, msg_period=None):
 
@@ -100,7 +115,7 @@ class OmniArmBot(nstbot.NSTBot):
     def disconnect(self):
         self.retina(False)
         self.connection.send('!I0\n')
-        self.motor(0, 0, 0)
+        self.base(0, 0, 0)
         # self.arm(0.184, 0.172, 0.394, 0.052, 0.134)
         super(OmniArmBot, self).disconnect()
 

@@ -15,6 +15,6 @@ while True:
     print 'servo', bot.sensor['servo']
     print 'load', bot.sensor['load']
     print '-------------------------'
-    bot.motor(0.0, 0.0, 1)
+    bot.base_pos(0.0, 0.0, 0.5)
     time.sleep(0.2)
 
