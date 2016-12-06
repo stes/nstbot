@@ -16,15 +16,14 @@ class OmniArmBot(nstbot.NSTBot):
         self.sensor_scale = {}
         self.sensor_map = {}
         self.add_sensor('bump', bit=0, range=1, length=1)
-        self.add_sensor('wheel', bit=1, range=100, length=8) # we take only the first 3 vals (base motors)
+        self.add_sensor('wheel', bit=1, range=100, length=8)  # we take only the first 3 vals (base motors)
         # the hex encoded values need conversion
-        self.add_sensor('gyro', bit=2, range=2**32-1, length=4) # we take only the first 3 vals (x, y, z)
+        self.add_sensor('gyro', bit=2, range=2**32-1, length=4)  # we take only the first 3 vals (x, y, z)
         self.add_sensor('accel', bit=3, range=2**32-1, length=3)
-        self.add_sensor('euler', bit=4, range=2**32-1, length=4) # we take only the first 3 vals (x, y, z)
+        self.add_sensor('euler', bit=4, range=2**32-1, length=4)  # we take only the first 3 vals (x, y, z)
         self.add_sensor('compass', bit=5, range=2**32-1, length=3)
-        self.add_sensor('servo', bit=7, range=4096, length=8) # we only take the last 5 (arm motors)
-        self.add_sensor('load', bit=9, range=4096, length=8)# we only take the last 5 (arm motors)
-        # self.sensor_bitmap = {"wheel": [17,slice(0, 3)], "gyro": [4,slice(0, 3)], "accel": [5, slice(0,3)], "euler": [9, slice(0,3)], "compass": [6, slice(0, 3)], "servo": [16, slice(4, 8)], "load": [14, slice(4, 8)]}
+        self.add_sensor('servo', bit=7, range=4096, length=8)  # we only take the last 5 (arm motors)
+        self.add_sensor('load', bit=9, range=4096, length=8)  # we only take the last 5 (arm motors)
         self.sensor_bitmap = {"bump": [19, slice(0, 1)],
                               "wheel": [17,slice(0, 3)],
                               "gyro": [4,slice(0, 3)],
@@ -33,48 +32,48 @@ class OmniArmBot(nstbot.NSTBot):
                               "compass": [6, slice(0, 3)],
                               "servo": [16, slice(3, 8)],
                               "load": [14, slice(3, 8)]}
-        self.base(0, 0, 0)
+        self.base(0.0, 0.0, 0.0)
+        # FIXME correct arm init position
         #self.arm(0.184, 0.172, 0.394, 0.052, 0.134)
 
     def base(self, x, y, z, msg_period=None):
-        vrange = 100
-        x = int(x * vrange)
-        y = int(y * vrange)
-        z = int(z * vrange)
+        val_range = 100
+        x = int(x * val_range)
+        y = int(y * val_range)
+        z = int(z * val_range)
 
-        if x > vrange: x = vrange
-        if x < -vrange: x = -vrange
-        if y > vrange: y = vrange
-        if y < -vrange: y = -vrange
-        if z > vrange: rot = vrange
-        if z < -vrange: rot = -vrange
+        if x > val_range: x = val_range
+        if x < -val_range: x = -val_range
+        if y > val_range: y = val_range
+        if y < -val_range: y = -val_range
+        if z > val_range: z = val_range
+        if z < -val_range: z = -val_range
         cmd = '!P0%d\n!P1%d\n!P2%d\n' % (x, y, z)
         self.send('base', cmd, msg_period=msg_period)
 
     def base_pos(self, x, y, rot, msg_period=None):
-        vrange = 100
-        x = int(x * vrange)
-        y = int(y * vrange)
-        rot = int(rot * vrange)
+        val_range = 100
+        x = int(x * val_range)
+        y = int(y * val_range)
+        rot = int(rot * val_range)
 
-        if x > vrange: x = vrange
-        if x < -vrange: x = -vrange
-        if y > vrange: y = vrange
-        if y < -vrange: y = -vrange
-        if rot > vrange: rot = vrange
-        if rot < -vrange: rot = -vrange
+        if x > val_range: x = val_range
+        if x < -val_range: x = -val_range
+        if y > val_range: y = val_range
+        if y < -val_range: y = -val_range
+        if rot > val_range: rot = val_range
+        if rot < -val_range: rot = -val_range
         cmd = '!D%d,%d,%d\n' % (x, y, rot)
         self.send('base_pos', cmd, msg_period=msg_period)
 
     def arm(self, j1, j2, j3, j4, j5, msg_period=None):
-
         # motion should be limited by the dynamics of the robot
         # min pos and max pos in the range
-        vrange = 4096
+        val_range = 4096
         min_pos = np.array([630, 250, 1100, 0, 550])
         max_pos = np.array([2700, 2700, 3000, 600, 1000])
 
-        joints = (np.array([j1, j2, j3, j4, j5]) * vrange).astype(dtype=np.int)
+        joints = (np.array([j1, j2, j3, j4, j5]) * val_range).astype(dtype=np.int)
 
         # apply limits
         joints[joints < min_pos] = min_pos[joints < min_pos]
@@ -106,8 +105,10 @@ class OmniArmBot(nstbot.NSTBot):
 
     def connect(self, connection):
         super(OmniArmBot, self).connect(connection)
-        self.connection.send('R\n')
-        self.connection.send('!E0\n')
+        self.connection.send('R\n')  # reset platform
+        time.sleep(1)
+        self.connection.send('!E0\n')  # disable command echo (save some bandwidth)
+        time.sleep(1)
         thread = threading.Thread(target=self.sensor_loop)
         thread.daemon = True
         thread.start()
@@ -116,6 +117,7 @@ class OmniArmBot(nstbot.NSTBot):
         self.retina(False)
         self.connection.send('!I0\n')
         self.base(0, 0, 0)
+        # FIXME correct arm init position
         # self.arm(0.184, 0.172, 0.394, 0.052, 0.134)
         super(OmniArmBot, self).disconnect()
 
@@ -140,7 +142,6 @@ class OmniArmBot(nstbot.NSTBot):
     def keep_image(self):
         if self.image is None:
             self.image = np.zeros((128, 128), dtype=float)
-
 
     def image_loop(self, decay, display_mode):
         import pylab
@@ -206,7 +207,6 @@ class OmniArmBot(nstbot.NSTBot):
 
             self.image *= decay
 
-
     def sensor_loop(self):
         """Handle all data coming from the robot."""
         old_data = None
@@ -262,7 +262,6 @@ class OmniArmBot(nstbot.NSTBot):
                     dbg, proc_cmd = cmd.split('-I', 1)
                     self.process_ascii('-I'+proc_cmd)
 
-
     def process_ascii(self, message):
         try:
             if message[:2] == '-I':
@@ -293,6 +292,7 @@ class OmniArmBot(nstbot.NSTBot):
             traceback.print_exc()
 
     last_timestamp = None
+
     def process_retina(self, data):
         packet_size = self.retina_packet_size
         y = data[::packet_size] & 0x7f
@@ -393,7 +393,6 @@ class OmniArmBot(nstbot.NSTBot):
                 '''
 
             #print self.p_x, self.p_y, self.track_certainty
-
 
     def track_spike_rate(self, **regions):
         self.count_spike_regions = regions

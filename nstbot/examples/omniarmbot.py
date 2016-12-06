@@ -2,8 +2,12 @@ import time
 import nstbot
 
 bot = nstbot.OmniArmBot()
-bot.connect(nstbot.Socket('10.162.177.29', port=54322))
-bot.activate_sensors(period=1.0, euler = True, bump=True, wheel=True, gyro=True, accel=True, compass=True, servo=True, load=True)
+bot.connect(nstbot.Socket('10.162.177.102', port=56000))
+bot.activate_sensors(period=1.0, euler=True,
+                     bump=False, wheel=True,
+                     gyro=True, accel=True,
+                     compass=True, servo=True,
+                     load=True)
 
 while True:
     print 'wheel', bot.sensor['wheel']
@@ -16,5 +20,5 @@ while True:
     print 'load', bot.sensor['load']
     print '-------------------------'
     bot.base_pos(0.0, 0.0, 0.5)
-    time.sleep(0.2)
+    time.sleep(0.1)
 
