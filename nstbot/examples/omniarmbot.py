@@ -2,7 +2,7 @@ import time
 import nstbot
 
 bot = nstbot.OmniArmBot()
-bot.connect(nstbot.Socket('10.162.177.29'))
+bot.connect(nstbot.Socket('10.162.177.29', port=54322))
 bot.activate_sensors(period=1.0, euler = True, bump=True, wheel=True, gyro=True, accel=True, compass=True, servo=True, load=True)
 
 while True:

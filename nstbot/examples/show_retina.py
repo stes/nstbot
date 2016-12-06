@@ -2,9 +2,9 @@ import nstbot
 
 import time
 bot = nstbot.RetinaBot()
-bot.connect(nstbot.Serial('/dev/ttyUSB0', baud=4000000))
+#bot.connect(nstbot.Serial('/dev/ttyUSB0', baud=4000000))
 #bot.connect(connection.Socket('10.162.177.187'))
-#bot.connect(nstbot.Socket('192.168.1.161'))
+bot.connect(nstbot.Socket('10.162.177.29', port=54320))
 time.sleep(1)
 bot.retina(True)
 bot.show_image()
