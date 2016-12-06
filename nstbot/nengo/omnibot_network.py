@@ -1,6 +1,6 @@
 import nengo
 import numpy as np
-
+import time
 import nstbot
 
 class BaseNode(nengo.Node):
@@ -56,7 +56,8 @@ class SensorNode(nengo.Node):
                                          size_in=0, size_out=length)
 
     def sensor(self, t):
-        return self.bot.get_sensor(self.key)
+        if self.bot.get_sensor(self.key) is not None or self.bot.get_sensor(self.key) != []:
+            return self.bot.get_sensor(self.key)
 
 
 
@@ -82,6 +83,7 @@ class OmniArmBotNetwork(nengo.Network):
                                                freqs=freqs)
             if len(sensors) > 0:
                 self.bot.activate_sensors(period=msg_period, **sensors)
+                time.sleep(5.0)
                 for k, v in sensors.items():
                     if v:
                         setattr(self, k, SensorNode(self.bot, k))
