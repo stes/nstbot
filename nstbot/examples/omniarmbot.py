@@ -25,6 +25,6 @@ while True:
     for key, value in adress_list.iteritems():
         if "retina" in key:
             print "tracked point in " + key + ": ", [bot.p_x[key],  bot.p_y[key]]
-    print '-------------------------'
+    print '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
     bot.base_pos(0.0, 0.0, 0.5)
     time.sleep(0.1)

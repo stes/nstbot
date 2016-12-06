@@ -70,5 +70,5 @@ class SocketList(object):
             return ''
             
     def close(self):
-        for name, socket in socket_list.iteritems():
+        for name, socket in self.socket_list.iteritems():
             self.socket_list[name].close()

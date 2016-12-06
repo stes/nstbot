@@ -29,7 +29,6 @@ class OmniArmBot(nstbot.NSTBot):
 
         for name in self.adress_list:
             if "retina" in name:
-                self.retina(name, True)
                 self.retina_packet_size[name] = None
                 self.image[name] = None
                 self.count_spike_regions[name] = None
@@ -38,6 +37,7 @@ class OmniArmBot(nstbot.NSTBot):
                 self.p_y[name] = None
                 self.track_certainty[name] = None
                 self.last_timestamp[name] = None
+                self.retina(name, True)
                 self.track_frequencies(name, freqs=[1000])
         self.sensor = {}
         self.sensor_scale = {}
@@ -145,14 +145,14 @@ class OmniArmBot(nstbot.NSTBot):
             if "retina" not in name:    
                 self.connection.send(name,'!E0\n')  # disable command echo (save some bandwidth)
                 time.sleep(1)
-        thread = threading.Thread(target=self.sensor_loop, args=(name,))
-        thread.daemon = True
-        thread.start()
+            thread = threading.Thread(target=self.sensor_loop, args=(name,))
+            thread.daemon = True
+            thread.start()
 
     def disconnect(self):
-        self.retina(False)
-        for name, value in self.adress_list.iteritems():
-            self.connection.send(name,'!I0\n')
+        for name in self.adress_list:
+            self.connection.send(name, '!I0\n')
+            self.retina(name, False)
         self.base(0, 0, 0)
         # FIXME correct arm init position
         # self.arm(0.184, 0.172, 0.394, 0.052, 0.134)
@@ -389,7 +389,7 @@ class OmniArmBot(nstbot.NSTBot):
 
             index_off = (data[1::packet_size] & 0x80) == 0
 
-            delta = np.where(index_off, t - self.last_off[x, y], 0)
+            delta = np.where(index_off, t - self.last_off[name][x, y], 0)
 
             self.last_off[name][x[index_off],
                          y[index_off]] = t[index_off]
