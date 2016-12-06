@@ -50,14 +50,15 @@ class FrequencyNode(nengo.Node):
 class SensorNode(nengo.Node):
     def __init__(self, bot, key):
         self.bot = bot
-        length = len(bot.get_sensor(key))
+        self.length = len(bot.get_sensor(key))
         self.key = key
         super(SensorNode, self).__init__(self.sensor,
-                                         size_in=0, size_out=length)
+                                         size_in=0, size_out=self.length)
 
     def sensor(self, t):
         if self.bot.get_sensor(self.key) is not None or self.bot.get_sensor(self.key) != []:
-            return self.bot.get_sensor(self.key)
+            if self.length == len(self.bot.get_sensor(self.key)):
+                return self.bot.get_sensor(self.key)
 
 
 
