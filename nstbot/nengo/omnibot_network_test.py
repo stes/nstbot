@@ -5,8 +5,12 @@ import nengo
 
 model = nengo.Network()
 with model:
+    adress_list = {'retina_left': ['192.168.1.1', 56000], 
+                   'retina_right': ['192.168.1.1', 56001], 
+                   'retina_arm': ['192.168.1.1', 56002], 
+                   'motors': ['192.168.1.1', 56002]}
     bot = nstbot.OmniArmBotNetwork(
-            nstbot.Socket('10.162.177.102', port=56000),
+            nstbot.SocketList(adress_list),
             base=True, retina=False, #freqs=[100, 200, 300],
             accel=True, bump=True, wheel=True, euler=True, servo=True, load=True,
             compass=True, gyro=True, msg_period=0.1)

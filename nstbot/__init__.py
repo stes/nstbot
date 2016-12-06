@@ -3,6 +3,6 @@ from .pushbot import PushBot
 from .ev3bot import EV3Bot
 from .omniarm import OmniArmBot
 from . import connection
-from .connection import Socket, Serial
+from .connection import SocketList, Socket, Serial
 import nengo
 from nengo.omnibot_network import OmniArmBotNetwork

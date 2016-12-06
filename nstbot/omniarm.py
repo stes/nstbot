@@ -7,11 +7,38 @@ import time
 class OmniArmBot(nstbot.NSTBot):
     def initialize(self):
         super(OmniArmBot, self).initialize()
-        self.retina(False)
-        self.retina_packet_size = None
-        self.image = None
-        self.count_spike_regions = None
-        self.track_periods = None
+        self.retina_packet_size = {}
+        self.image = {}
+        self.count_spike_regions = {}
+        self.track_periods = {}
+        self.last_timestamp = {}
+        self.p_x = {}
+        self.p_y = {}
+        self.track_certainty = {}
+        self.count_regions = {}
+        self.count_regions_scale = {}
+        self.track_certainty_scale = {}
+
+        self.track_sigma_t = {}
+        self.track_sigma_p = {}
+        self.track_eta = {}
+
+        self.last_off = {}
+        self.track_certainty = {}
+        self.good_events = {}
+
+        for name in self.adress_list:
+            if "retina" in name:
+                self.retina(name, True)
+                self.retina_packet_size[name] = None
+                self.image[name] = None
+                self.count_spike_regions[name] = None
+                self.track_periods[name] = None
+                self.p_x[name] = None
+                self.p_y[name] = None
+                self.track_certainty[name] = None
+                self.last_timestamp[name] = None
+                self.track_frequencies(name, freqs=[1000])
         self.sensor = {}
         self.sensor_scale = {}
         self.sensor_map = {}
@@ -49,7 +76,7 @@ class OmniArmBot(nstbot.NSTBot):
         if z > val_range: z = val_range
         if z < -val_range: z = -val_range
         cmd = '!P0%d\n!P1%d\n!P2%d\n' % (x, y, z)
-        self.send('base', cmd, msg_period=msg_period)
+        self.send('motors', 'base', cmd, msg_period=msg_period)
 
     def base_pos(self, x, y, rot, msg_period=None):
         val_range = 100
@@ -64,7 +91,7 @@ class OmniArmBot(nstbot.NSTBot):
         if rot > val_range: rot = val_range
         if rot < -val_range: rot = -val_range
         cmd = '!D%d,%d,%d\n' % (x, y, rot)
-        self.send('base_pos', cmd, msg_period=msg_period)
+        self.send('motors', 'base_pos', cmd, msg_period=msg_period)
 
     def arm(self, j1, j2, j3, j4, j5, msg_period=None):
         # motion should be limited by the dynamics of the robot
@@ -82,7 +109,7 @@ class OmniArmBot(nstbot.NSTBot):
         # indices for motor IDs
         for ids in range(3, 8, 1):
             cmd = '!G%d%d\n' % (ids, joints[ids - 3])
-            self.send('arm%d' % ids, cmd, msg_period=msg_period)
+            self.send('motors', 'arm%d' % ids, cmd, msg_period=msg_period)
 
     def add_sensor(self, name, bit, range, length):
         value = np.zeros(length)
@@ -98,52 +125,65 @@ class OmniArmBot(nstbot.NSTBot):
             bit = self.sensor_map[name]
             bits += 1 << bit
         cmd = '!I1,%d,%d\n' % (int(1.0/period), bits)
-        self.connection.send(cmd)
+        self.connection.send('motors', cmd)
+
+    def send(self, name, key, message, msg_period=None):
+        now = time.time()
+        if msg_period is None or now > self.last_time.get(key, 0) + msg_period:
+            self.connection.send(name, message)
+            self.last_time[key] = now
 
     def get_sensor(self, name):
         return self.sensor[name]
 
     def connect(self, connection):
+        self.adress_list = connection.get_socket_keys()
         super(OmniArmBot, self).connect(connection)
-        self.connection.send('R\n')  # reset platform
-        time.sleep(1)
-        self.connection.send('!E0\n')  # disable command echo (save some bandwidth)
-        time.sleep(1)
-        thread = threading.Thread(target=self.sensor_loop)
+        for name in self.adress_list:
+            self.connection.send(name,'R\n')  # reset platform
+            time.sleep(1)
+            if "retina" not in name:    
+                self.connection.send(name,'!E0\n')  # disable command echo (save some bandwidth)
+                time.sleep(1)
+        thread = threading.Thread(target=self.sensor_loop, args=(name,))
         thread.daemon = True
         thread.start()
 
     def disconnect(self):
         self.retina(False)
-        self.connection.send('!I0\n')
+        for name, value in self.adress_list.iteritems():
+            self.connection.send(name,'!I0\n')
         self.base(0, 0, 0)
         # FIXME correct arm init position
         # self.arm(0.184, 0.172, 0.394, 0.052, 0.134)
         super(OmniArmBot, self).disconnect()
 
-    def retina(self, active, bytes_in_timestamp=4):
+    def retina(self, name, active, bytes_in_timestamp=4):
         if active:
             assert bytes_in_timestamp in [0, 2, 3, 4]
             cmd = '!E%d\nE+\n' % bytes_in_timestamp
-            self.retina_packet_size = 2 + bytes_in_timestamp
+            self.retina_packet_size[name] = 2 + bytes_in_timestamp
         else:
             cmd = 'E-\n'
-            self.retina_packet_size = None
-        self.connection.send(cmd)
+            self.retina_packet_size[name] = None
+        self.connection.send(name,cmd)
 
-    def show_image(self, decay=0.5, display_mode='quick'):
-        if self.image is None:
-            self.image = np.zeros((128, 128), dtype=float)
+    def show_image(self, name, decay=0.5, display_mode='quick'):
+        if self.image[name] is None:
+            self.image[name] = np.zeros((128, 128), dtype=float)
             thread = threading.Thread(target=self.image_loop,
-                                      args=(decay, display_mode))
+                                      args=(name, decay, display_mode))
             thread.daemon = True
             thread.start()
 
-    def keep_image(self):
-        if self.image is None:
-            self.image = np.zeros((128, 128), dtype=float)
+    def get_image(self, name):
+        return self.image[name]
 
-    def image_loop(self, decay, display_mode):
+    def keep_image(self, name):
+        if self.image[name] is None:
+            self.image[name] = np.zeros((128, 128), dtype=float)
+
+    def image_loop(self, name, decay, display_mode):
         import pylab
 
         import matplotlib.pyplot as plt
@@ -153,14 +193,14 @@ class OmniArmBot(nstbot.NSTBot):
         plt.show(block=False)
 
         pylab.ion()
-        img = pylab.imshow(self.image, vmax=1, vmin=-1,
+        img = pylab.imshow(self.image[name], vmax=1, vmin=-1,
                                        interpolation='none', cmap='binary')
         pylab.xlim(0, 127)
         pylab.ylim(127, 0)
 
         regions = {}
-        if self.count_spike_regions is not None:
-            for k, v in self.count_spike_regions.items():
+        if self.count_spike_regions[name] is not None:
+            for k, v in self.count_spike_regions[name].items():
                 minx, miny, maxx, maxy = v
                 rect = pylab.Rectangle((minx - 0.5, miny - 0.5),
                                        maxx - minx,
@@ -169,23 +209,23 @@ class OmniArmBot(nstbot.NSTBot):
                 pylab.gca().add_patch(rect)
                 regions[k] = rect
 
-        if self.track_periods is not None:
+        if self.track_periods[name] is not None:
             colors = ([(0,0,1), (0,1,0), (1,0,0), (1,1,0), (1,0,1)] * 10)[:len(self.p_y)]
-            scatter = pylab.scatter(self.p_x, self.p_y, s=50, c=colors)
+            scatter = pylab.scatter(self.p_x[name], self.p_y[name], s=50, c=colors)
         else:
             scatter = None
 
         while True:
 
-            img.set_data(self.image)
+            img.set_data(self.image[name])
 
             for k, rect in regions.items():
                 alpha = self.get_spike_rate(k) * 0.5
                 alpha = min(alpha, 0.5)
                 rect.set_alpha(0.05 + alpha)
             if scatter is not None:
-                scatter.set_offsets(np.array([self.p_x, self.p_y]).T)
-                c = [(r,g,b,min(self.track_certainty[i],1)) for i,(r,g,b) in enumerate(colors)]
+                scatter.set_offsets(np.array([self.p_x[name], self.p_y[name]]).T)
+                c = [(r,g,b,min(self.track_certainty[name][i],1)) for i,(r,g,b) in enumerate(colors)]
                 scatter.set_color(c)
 
             if display_mode == 'quick':
@@ -205,16 +245,19 @@ class OmniArmBot(nstbot.NSTBot):
                 # this works on all systems, but is kinda slow
                 pylab.pause(1e-8)
 
-            self.image *= decay
+            self.image[name] *= decay
 
-    def sensor_loop(self):
+    def sensor_loop(self, name):
         """Handle all data coming from the robot."""
         old_data = None
         buffered_ascii = ''
         while True:
-            packet_size = self.retina_packet_size
+            if "retina" in name:
+                packet_size = self.retina_packet_size[name]
+            else:
+                packet_size = None
             # grab the new data
-            data = self.connection.receive()
+            data = self.connection.receive(name)
 
             # combine it with any leftover data from last time through the loop
             if old_data is not None:
@@ -253,14 +296,16 @@ class OmniArmBot(nstbot.NSTBot):
                     data_all = data_all[:-extra]
                 if len(data_all) > 0:
                     # now process those retina events
-                    self.process_retina(data_all)
+                    if "retina" in name:
+                        self.process_retina(name, data_all)
 
-            # and process the ascii events too
-            while '\n\n' in buffered_ascii:
-                cmd, buffered_ascii = buffered_ascii.split('\n\n', 1)
-                if '-I' in cmd:
-                    dbg, proc_cmd = cmd.split('-I', 1)
-                    self.process_ascii('-I'+proc_cmd)
+            if "retina" not in name:
+                # and process the ascii events too
+                while '\n\n' in buffered_ascii:
+                    cmd, buffered_ascii = buffered_ascii.split('\n\n', 1)
+                    if '-I' in cmd:
+                        dbg, proc_cmd = cmd.split('-I', 1)
+                        self.process_ascii('-I'+proc_cmd)
 
     def process_ascii(self, message):
         try:
@@ -293,17 +338,17 @@ class OmniArmBot(nstbot.NSTBot):
 
     last_timestamp = None
 
-    def process_retina(self, data):
-        packet_size = self.retina_packet_size
+    def process_retina(self, name, data):
+        packet_size = self.retina_packet_size[name]
         y = data[::packet_size] & 0x7f
         x = data[1::packet_size] & 0x7f
-        if self.image is not None:
+        if self.image[name] is not None:
             value = np.where(data[1::packet_size]>=0x80, 1, -1)
-            self.image[y, x] += value
+            self.image[name][y, x] += value
 
-        if self.count_spike_regions is not None:
+        if self.count_spike_regions[name] is not None:
             tau = 0.05 * 1000000
-            for k, region in self.count_spike_regions.items():
+            for k, region in self.count_spike_regions[name].items():
                 minx, miny, maxx, maxy = region
                 index = (minx <= x) & (x<maxx) & (miny <= y) & (y<maxy)
                 count = np.sum(index)
@@ -313,20 +358,20 @@ class OmniArmBot(nstbot.NSTBot):
                 if packet_size >= 6:
                     t += int(data[-4]) << 24
 
-                old_count, old_time = self.count_regions[k]
+                old_count, old_time = self.count_regions[name][k]
 
                 dt = float(t - old_time)
                 if dt < 0:
                     dt += 1 << ((packet_size - 2) * 8)
-                count *= self.count_regions_scale[k]
+                count *= self.count_regions_scale[name][k]
                 count /= dt / 1000.0
 
                 decay = np.exp(-dt/tau)
                 new_count = old_count * (decay) + count * (1-decay)
 
-                self.count_regions[k] = new_count, t
+                self.count_regions[name][k] = new_count, t
 
-        if self.track_periods is not None:
+        if self.track_periods[name] is not None:
             t = data[2::packet_size].astype(np.uint32)
             t = (t << 8) + data[3::packet_size]
             if packet_size >= 5:
@@ -334,96 +379,82 @@ class OmniArmBot(nstbot.NSTBot):
             if packet_size >=6:
                 t = (t << 8) + data[5::packet_size]
 
-            if self.last_timestamp is not None:
-                dt = float(t[-1]) - self.last_timestamp
+            if self.last_timestamp[name] is not None:
+                dt = float(t[-1]) - self.last_timestamp[name]
                 if dt < 0:
                     dt += 1 << (8 * (packet_size-2))
             else:
                 dt = 1
-            self.last_timestamp = t[-1]
+            self.last_timestamp[name] = t[-1]
 
             index_off = (data[1::packet_size] & 0x80) == 0
 
             delta = np.where(index_off, t - self.last_off[x, y], 0)
 
-            self.last_off[x[index_off],
+            self.last_off[name][x[index_off],
                          y[index_off]] = t[index_off]
 
             tau = 0.05 * 1000000
             decay = np.exp(-dt/tau)
-            self.track_certainty *= decay
+            self.track_certainty[name] *= decay
 
-            for i, period in enumerate(self.track_periods):
-                eta = self.track_eta
+            for i, period in enumerate(self.track_periods[name]):
+                eta = self.track_eta[name]
                 t_exp = period * 2
-                sigma_t = self.track_sigma_t    # in microseconds
-                sigma_p = self.track_sigma_p    # in pixels
+                sigma_t = self.track_sigma_t[name]    # in microseconds
+                sigma_p = self.track_sigma_p[name]    # in pixels
                 t_diff = delta.astype(np.float) - t_exp
 
                 w_t = np.exp(-(t_diff**2)/(2*sigma_t**2))
-                px = self.p_x[i]
-                py = self.p_y[i]
+                px = self.p_x[name][i]
+                py = self.p_y[name][i]
 
                 dist2 = (x - px)**2 + (y - py)**2
                 w_p = np.exp(-dist2/(2*sigma_p**2))
 
                 ww = w_t * w_p
-                c = sum(ww) * self.track_certainty_scale / dt
+                c = sum(ww) * self.track_certainty_scale[name] / dt
 
-                self.track_certainty[i] += (1-decay) * c
+                self.track_certainty[name][i] += (1-decay) * c
 
                 w = eta * ww
                 for j in np.where(w > eta * 0.1)[0]:
                         px += w[j] * (x[j] - px)
                         py += w[j] * (y[j] - py)
-                self.p_x[i] = px
-                self.p_y[i] = py
+                self.p_x[name][i] = px
+                self.p_y[name][i] = py
 
-                '''
-                # faster, but less accurate method:
-                # update position estimate
-                try:
-                    r_x = np.average(x, weights=w_t*w_p)
-                    r_y = np.average(y, weights=w_t*w_p)
-                    self.p_x[i] = (1-eta)*self.p_x[i] + (eta)*r_x
-                    self.p_y[i] = (1-eta)*self.p_y[i] + (eta)*r_y
-                except ZeroDivisionError:
-                    # occurs in np.average if weights sum to zero
-                    pass
-                '''
 
-            #print self.p_x, self.p_y, self.track_certainty
-
-    def track_spike_rate(self, **regions):
-        self.count_spike_regions = regions
-        self.count_regions = {}
-        self.count_regions_scale = {}
+    def track_spike_rate(self,name, **regions):
+        self.count_spike_regions[name] = regions
+        self.count_regions[name] = {}
+        self.count_regions_scale[name] = {}
         for k,v in regions.items():
-            self.count_regions[k] = [0, 0]
+            self.count_regions[name][k] = [0, 0]
             area = (v[2] - v[0]) * (v[3] - v[1])
-            self.count_regions_scale[k] = 200.0 / area
+            self.count_regions_scale[name][k] = 200.0 / area
 
-    def get_spike_rate(self, region):
-        return self.count_regions[region][0]
+    def get_spike_rate(self, name, region):
+        return self.count_regions[name][region][0]
 
-    def track_frequencies(self, freqs, sigma_t=100, sigma_p=30, eta=0.3,
+    def track_frequencies(self, name, freqs, sigma_t=100, sigma_p=30, eta=0.3,
                                  certainty_scale=10000):
         freqs = np.array(freqs, dtype=float)
         track_periods = 500000 / freqs
-        self.track_certainty_scale = certainty_scale
+        self.track_certainty_scale[name] = certainty_scale
 
-        self.track_sigma_t = sigma_t
-        self.track_sigma_p = sigma_p
-        self.track_eta = eta
+        self.track_sigma_t[name] = sigma_t
+        self.track_sigma_p[name] = sigma_p
+        self.track_eta[name] = eta
 
-        self.last_off = np.zeros((128, 128), dtype=np.uint32)
-        self.p_x = np.zeros_like(track_periods) + 64.0
-        self.p_y = np.zeros_like(track_periods) + 64.0
-        self.track_certainty = np.zeros_like(track_periods)
-        self.good_events = np.zeros_like(track_periods, dtype=int)
-        self.track_periods = track_periods
+        self.last_off[name] = np.zeros((128, 128), dtype=np.uint32)
+        self.p_x[name] = np.zeros_like(track_periods) + 64.0
+        self.p_y[name] = np.zeros_like(track_periods) + 64.0
+        self.track_certainty[name] = np.zeros_like(track_periods)
+        self.good_events[name] = np.zeros_like(track_periods, dtype=int)
+        self.track_periods[name] = track_periods
 
-    def get_frequency_info(self, index):
-        x = self.p_x[index] / 64.0 - 1
-        y = - self.p_y[index] / 64.0 + 1
-        return x, y, self.track_certainty[index]
+    def get_frequency_info(self, name, index):
+        x = self.p_x[name][index] / 64.0 - 1
+        y = - self.p_y[name][index] / 64.0 + 1
+        return x, y, self.track_certainty[name][index]

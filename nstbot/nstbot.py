@@ -23,7 +23,8 @@ class NSTBot(object):
         return self.connection.receive()
 
     def initialize(self):
-        self.connection.send('\n')
+        #self.connection.send('\n')
+        pass
 
     def disconnect(self):
         self.connection.close()
