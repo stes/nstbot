@@ -12,7 +12,7 @@ with model:
 
     bot = nstbot.OmniArmBotNetwork(
             nstbot.SocketList(address_list),
-            base=True, retina=True, freqs=[1000],
+            base=True, retina=True, freqs=[100, 300, 400],
             accel=True, bump=True, wheel=True, euler=True, servo=True, load=True,
             compass=True, gyro=True, msg_period=0.1)
 
