@@ -12,7 +12,7 @@ bot.show_image()
 #                     #all=(0,0,128,128),
 #                     left=(0,0,64,128),
 #                     right=(64,0,128,128))
-bot.track_frequencies(freqs=[1000])
+#bot.track_frequencies(freqs=[200, 300, 400])
 while True:
     time.sleep(1)
 

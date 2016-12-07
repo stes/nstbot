@@ -28,6 +28,7 @@ class Socket(object):
 
     def send(self, message):
         self.socket.send(message)
+
     def receive(self):
         try:
             return self.socket.recv(1024)

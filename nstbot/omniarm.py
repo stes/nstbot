@@ -37,8 +37,6 @@ class OmniArmBot(nstbot.NSTBot):
                 self.p_y[name] = None
                 self.track_certainty[name] = None
                 self.last_timestamp[name] = None
-                self.retina(name, True)
-                self.track_frequencies(name, freqs=[1000])
         self.sensor = {}
         self.sensor_scale = {}
         self.sensor_map = {}
@@ -142,8 +140,11 @@ class OmniArmBot(nstbot.NSTBot):
         for name in self.adress_list:
             self.connection.send(name,'R\n')  # reset platform
             time.sleep(1)
-            if "retina" not in name:    
+            if "retina" not in name:
                 self.connection.send(name,'!E0\n')  # disable command echo (save some bandwidth)
+                time.sleep(2)
+            else:
+                self.connection.send(name, 'E+\n')
                 time.sleep(1)
             thread = threading.Thread(target=self.sensor_loop, args=(name,))
             thread.daemon = True
@@ -151,11 +152,13 @@ class OmniArmBot(nstbot.NSTBot):
 
     def disconnect(self):
         for name in self.adress_list:
-            self.connection.send(name, '!I0\n')
-            self.retina(name, False)
-        self.base(0, 0, 0)
-        # FIXME correct arm init position
-        # self.arm(0.184, 0.172, 0.394, 0.052, 0.134)
+            if 'retina' not in name:
+                self.connection.send(name, '!I0\n')
+                self.base(0, 0, 0)
+                # FIXME correct arm init position
+                # self.arm(0.184, 0.172, 0.394, 0.052, 0.134)
+            else:
+                self.retina(name, False)
         super(OmniArmBot, self).disconnect()
 
     def retina(self, name, active, bytes_in_timestamp=4):
@@ -166,7 +169,7 @@ class OmniArmBot(nstbot.NSTBot):
         else:
             cmd = 'E-\n'
             self.retina_packet_size[name] = None
-        self.connection.send(name,cmd)
+        self.connection.send(name, cmd)
 
     def show_image(self, name, decay=0.5, display_mode='quick'):
         if self.image[name] is None:
@@ -275,15 +278,15 @@ class OmniArmBot(nstbot.NSTBot):
                 offset = 0
                 while len(ascii_index) > 0:
                     # if there's an ascii event, remove it from the data
-                    index = ascii_index[0]*packet_size
-                    stop_index = np.where(data_all[index:] >=0x80)[0]
+                    index = ascii_index[0] * packet_size
+                    stop_index = np.where(data_all[index:] >= 0x80)[0]
                     if len(stop_index) > 0:
                         stop_index = index + stop_index[0]
                     else:
                         stop_index = len(data)
 
                     # and add it to the buffered_ascii list
-                    buffered_ascii += data[offset+index:offset+stop_index]
+                    buffered_ascii += data[offset + index:offset + stop_index]
                     data_all = np.hstack((data_all[:index],
                                           data_all[stop_index:]))
                     offset += stop_index - index
@@ -305,7 +308,7 @@ class OmniArmBot(nstbot.NSTBot):
                     cmd, buffered_ascii = buffered_ascii.split('\n\n', 1)
                     if '-I' in cmd:
                         dbg, proc_cmd = cmd.split('-I', 1)
-                        self.process_ascii('-I'+proc_cmd)
+                        self.process_ascii('-I' + proc_cmd)
 
     def process_ascii(self, message):
         try:

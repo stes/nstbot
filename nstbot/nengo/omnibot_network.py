@@ -27,14 +27,15 @@ class RetinaNode(nengo.Node):
         self.bot = bot
         self.name = name
         self.msg_period = msg_period
-        self.bot.show_image(self.name)
+        #self.bot.show_image(self.name)
 
     def retina(self, t):
-        return self.bot.get_image(self.name).flatten()
+        #return self.bot.get_image(self.name).flatten()
+        pass
 
 class FrequencyNode(nengo.Node):
     def __init__(self, bot, name, msg_period, freqs):
-        super(FrequencyNode, self).__init__(self.freqs,
+        super(FrequencyNode, self).__init__(self.freqs, label=name,
                                             size_in=0, size_out=len(freqs)*3)
         self.bot = bot
         self.name = name
@@ -82,8 +83,8 @@ class OmniArmBotNetwork(nengo.Network):
                 for name in names:
                     if "retina" in name:
                         self.bot.retina(name, True)
-                        if retina:
-                            self.retina = RetinaNode(self.bot, name, msg_period=msg_period)
+                        # if retina:
+                        #     self.retina = RetinaNode(self.bot, name, msg_period=msg_period)
                         if freqs:
                             self.freqs = FrequencyNode(self.bot, name, msg_period=msg_period,
                                                        freqs=freqs)
