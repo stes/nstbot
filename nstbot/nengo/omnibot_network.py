@@ -73,6 +73,11 @@ class OmniArmBotNetwork(nengo.Network):
         self.bot = nstbot.OmniArmBot()
         self.bot.connect(connection)
 
+        for name in bot.adress_list:
+            if 'retina' in name:
+                self.bot.retina(name, True)
+                self.bot.track_frequencies(name, freqs=freqs)
+
         with self:
             if base:
                 self.base = BaseNode(self.bot, msg_period=msg_period)

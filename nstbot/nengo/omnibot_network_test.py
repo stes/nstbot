@@ -16,11 +16,6 @@ with model:
             accel=True, bump=True, wheel=True, euler=True, servo=True, load=True,
             compass=True, gyro=True, msg_period=0.1)
 
-    for name, val in address_list.iteritems():
-        if 'retina' in name:
-            bot.bot.retina(name, True)
-            bot.bot.track_frequencies(name, freqs=[1000])
-
 
     ctrl_base = nengo.Node([0, 0, 0])
     nengo.Connection(ctrl_base, bot.base)
