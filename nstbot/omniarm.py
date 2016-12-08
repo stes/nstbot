@@ -99,7 +99,7 @@ class OmniArmBot(nstbot.NSTBot):
         jnt = np.array(joints)
 
         # apply rad to position map
-        pos = (jnt*10000).astype(dtype=np.int)
+        pos = (jnt[:3]*10000).astype(dtype=np.int)
 
         # min pos and max pos in the range
         min_val = 0
@@ -110,6 +110,7 @@ class OmniArmBot(nstbot.NSTBot):
         pos[pos > max_val] = max_val
 
         # separate each link
+        pos = np.append(pos, jnt[3])
         [shoulder, elbow, hand, gripper] = pos
 
         # indices for motor IDs
@@ -120,6 +121,12 @@ class OmniArmBot(nstbot.NSTBot):
             grip = '!y\n'
         cmd += grip
         self.send('motors', 'arm', cmd, msg_period=msg_period)
+
+    def set_arm_speed(self, x, msg_period=None):
+        if x > 0:
+            self.send('motors', 'arm', '!P3%d\n!P4%d\n!P5%d\n!P6500\n' % (x, x, x), msg_period=msg_period)
+        else:
+            self.send('motors', 'arm', '!P35\n!P45\n!P55\n', msg_period=msg_period)
 
     def add_sensor(self, name, bit, range, length):
         value = np.zeros(length)
@@ -158,6 +165,8 @@ class OmniArmBot(nstbot.NSTBot):
             else:
                 self.connection.send(name, 'E+\n')
                 time.sleep(1)
+            self.set_arm_speed(20)
+            time.sleep(0.5)
             thread = threading.Thread(target=self.sensor_loop, args=(name,))
             thread.daemon = True
             thread.start()
@@ -346,9 +355,10 @@ class OmniArmBot(nstbot.NSTBot):
                             self.sensor[index] = sensors
                             self.sensor[self.sensor_map[index]] = sensors
         except:
-            print('Error processing "%s"' % message)
-            import traceback
-            traceback.print_exc()
+            pass
+            # print('Error processing "%s"' % message)
+            # import traceback
+            # traceback.print_exc()
 
     last_timestamp = None
 
