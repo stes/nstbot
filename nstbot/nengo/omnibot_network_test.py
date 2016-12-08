@@ -3,6 +3,7 @@ import numpy as np
 import nengo
 import signal
 import sys
+import plot_helpers as ph
 
 model = nengo.Network()
 with model:
@@ -12,8 +13,8 @@ with model:
                     'motors': ['10.162.177.29', 54322]}
 
     bot = nstbot.OmniArmBotNetwork(
-            nstbot.SocketList(address_list),
-            base=True, retina=False, arm=True, #freqs=[100, 300, 400],
+            nstbot.SocketList(address_list), b_probe=False,
+            base=True, retina=False, arm=True, freqs=[100, 300, 400],
             accel=True, bump=True, wheel=True, euler=False,
             servo=True, load=True,
             compass=False, gyro=True, msg_period=0.1)
@@ -69,4 +70,7 @@ if __name__ == "__main__":
         else:
             while True:
                 sim.run(10)
+
+    if bot.b_probe:
+        ph.plot_function(bot, sim)
     sim.close()
