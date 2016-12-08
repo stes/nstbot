@@ -1,6 +1,7 @@
 from . import nstbot
 import numpy as np
-import threading
+#import threading
+import multiprocessing
 import time
 
 
@@ -26,6 +27,9 @@ class OmniArmBot(nstbot.NSTBot):
         self.last_off = {}
         self.track_certainty = {}
         self.good_events = {}
+
+        self.conn_thread = {}
+        self.retina_thread = {}
 
         for name in self.adress_list:
             if "retina" in name:
@@ -162,22 +166,28 @@ class OmniArmBot(nstbot.NSTBot):
             time.sleep(1)
             if "retina" not in name:
                 self.connection.send(name,'!E0\n')  # disable command echo (save some bandwidth)
-                time.sleep(2)
+                time.sleep(1)
             else:
                 self.connection.send(name, 'E+\n')
                 time.sleep(1)
             self.set_arm_speed(20)
             time.sleep(0.5)
-            thread = threading.Thread(target=self.sensor_loop, args=(name,))
-            thread.daemon = True
-            thread.start()
+            # self.conn_thread[name] = threading.Thread(target=self.sensor_loop, args=(name,))
+            self.conn_thread[name] = multiprocessing.Process(target=self.sensor_loop, args=(name,))
+            self.conn_thread[name].daemon = True
+            self.conn_thread[name].start()
 
     def disconnect(self):
         for name in self.adress_list:
             if 'retina' not in name:
                 self.connection.send(name, '!I0\n')
+                self.connection.send(name, 'R\n')
             else:
                 self.retina(name, False)
+            for process in multiprocessing.active_children():
+                if process.is_alive():
+                    process.join()
+                process.terminate()
         self.base([0, 0, 0])
         self.arm([np.pi, np.pi, np.pi, 0])
         super(OmniArmBot, self).disconnect()
@@ -195,10 +205,12 @@ class OmniArmBot(nstbot.NSTBot):
     def show_image(self, name, decay=0.5, display_mode='quick'):
         if self.image[name] is None:
             self.image[name] = np.zeros((128, 128), dtype=float)
-            thread = threading.Thread(target=self.image_loop,
+            # self.retina_thread[name] = threading.Thread(target=self.image_loop,
+            #                           args=(name, decay, display_mode))
+            self.retina_thread[name] = multiprocessing.Process(target=self.image_loop,
                                       args=(name, decay, display_mode))
-            thread.daemon = True
-            thread.start()
+            self.retina_thread[name].daemon = True
+            self.retina_thread[name].start()
 
     def get_image(self, name):
         return self.image[name]

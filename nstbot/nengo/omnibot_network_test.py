@@ -1,7 +1,8 @@
 import nstbot
 import numpy as np
 import nengo
-
+import signal
+import sys
 
 model = nengo.Network()
 with model:
@@ -13,11 +14,12 @@ with model:
     bot = nstbot.OmniArmBotNetwork(
             nstbot.SocketList(address_list),
             base=True, retina=False, arm=True, #freqs=[100, 300, 400],
-            accel=True, bump=True, wheel=True, euler=True, servo=True, load=True,
-            compass=True, gyro=True, msg_period=0.1)
+            accel=True, bump=True, wheel=True, euler=False,
+            servo=True, load=True,
+            compass=False, gyro=True, msg_period=0.1)
 
 
-    ctrl_base = nengo.Node([0.5,0.5,0.5])
+    ctrl_base = nengo.Node([0.5, 0.5, 0.5])
     nengo.Connection(ctrl_base, bot.base)
 
     def ctrl_arm_func(t):
@@ -33,10 +35,19 @@ with model:
 
     nengo.Connection(ctrl_arm, bot.arm)
 
+def signal_handler(signal, frame):
+    bot.bot.disconnect()
+    sys.exit(0)
+
 if __name__ == "__main__":
     backend = "nengo" # select between different backends (nengo, nengo_ocl, nengo_spinnaker)
-    sim_time = 120 # set this to None to make the simulation run forever
+    sim_time = 60 # set this to None to make the simulation run forever
     sim = None # init sim variable
+
+    # signal handler enable
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
 
     if backend == "nengo":
       print "Reference"
@@ -58,3 +69,4 @@ if __name__ == "__main__":
         else:
             while True:
                 sim.run(10)
+    sim.close()

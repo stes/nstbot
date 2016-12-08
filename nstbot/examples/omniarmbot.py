@@ -33,6 +33,8 @@ while True:
         if "retina" in key:
             print "tracked point in " + key + ": ", [bot.p_x[key],  bot.p_y[key]]
     print '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
-    bot.base([0.0, 0.0, 0.5])
-    bot.arm([np.pi, np.pi, np.pi, 0])
-    time.sleep(0.1)
+    bot.base([0.5, 0.5, 0.5])
+    bot.arm([np.pi, np.pi, np.pi/2, 0])
+    time.sleep(4)
+    bot.arm([np.pi, np.pi, np.pi, 1])
+    time.sleep(4)
