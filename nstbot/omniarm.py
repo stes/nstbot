@@ -48,11 +48,16 @@ class OmniArmBot(nstbot.NSTBot):
         # we have 8 values but we take only the first 3 vals (base motors)
         self.add_sensor('wheel', bit=1, range=100, length=3)  
         # the hex encoded values need conversion
-        # we have 4 values but we take only the first 3 vals 
-        self.add_sensor('gyro', bit=2, range=2**32-1, length=3)  
+        # we have 4 values but we take only the first 3 vals
+        # gyro is measured in deg/s and Q16 encoded
+        self.add_sensor('gyro', bit=2, range=2**32-1, length=3)
+        # acc is measured in g and Q16 encoded
         self.add_sensor('accel', bit=3, range=2**32-1, length=3)
-        # we have 4 values but we take only the first 3 vals 
+        # we have 4 values but we take only the first 3 vals
+        # euler is measured in deg and Q16 encoded
+        # roll [-90,90], pitch [-180,180], yaw [-180,180]
         self.add_sensor('euler', bit=4, range=2**32-1, length=3)
+        # compass is measured in uT (micro tesla) and Q16 encoded
         self.add_sensor('compass', bit=5, range=2**32-1, length=3)
         # we have 8 values but we only take the last 5 (arm motors)
         self.add_sensor('servo', bit=7, range=4096, length=5)
