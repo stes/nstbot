@@ -13,11 +13,11 @@ with model:
                     'motors': ['10.162.177.29', 54322]}
 
     bot = nstbot.OmniArmBotNetwork(
-            nstbot.SocketList(address_list), b_probe=False,
-            base=True, retina=False, arm=True, freqs=[100, 300, 400],
-            accel=True, bump=True, wheel=True, euler=False,
+            nstbot.SocketList(address_list), b_probe=True,
+            base=True, retina=False, arm=True, freqs=[100],
+            accel=True, bump=True, wheel=True, euler=True,
             servo=True, load=True,
-            compass=False, gyro=True, msg_period=0.1)
+            compass=True, gyro=True, msg_period=0.1)
 
 
     ctrl_base = nengo.Node([0.5, 0.5, 0.5])
@@ -42,7 +42,7 @@ def signal_handler(signal, frame):
 
 if __name__ == "__main__":
     backend = "nengo" # select between different backends (nengo, nengo_ocl, nengo_spinnaker)
-    sim_time = 60 # set this to None to make the simulation run forever
+    sim_time = 1 # set this to None to make the simulation run forever
     sim = None # init sim variable
 
     # signal handler enable
@@ -70,7 +70,9 @@ if __name__ == "__main__":
         else:
             while True:
                 sim.run(10)
+        print "simulation finished"
 
     if bot.b_probe:
         ph.plot_function(bot, sim)
     sim.close()
+    print "script finished"

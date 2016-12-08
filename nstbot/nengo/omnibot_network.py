@@ -89,12 +89,20 @@ class OmniArmBotNetwork(nengo.Network):
         super(OmniArmBotNetwork, self).__init__(label=label)
         self.bot = nstbot.OmniArmBot()
         self.bot.connect(connection)
+
+        self.freqs = {}
+        self.freqs_neurons = {}
         self.b_probe = b_probe
         self.b_base = base
         self.b_arm = arm
         self.b_retina = retina
         self.b_freqs = False
         self.b_sensors = {}
+
+        self.p_freqs_out = {}
+        self.p_freqs_neurons_out = {}
+        self.p_freqs_neurons_spikes = {}
+        self.p_freqs_neurons_vol = {}
 
         for name in self.bot.adress_list:
             if 'retina' in name:
@@ -130,17 +138,17 @@ class OmniArmBotNetwork(nengo.Network):
                         #     self.retina = RetinaNode(self.bot, name, msg_period=msg_period)
                         if freqs:
                             self.b_freqs = True
-                            self.freqs = FrequencyNode(self.bot, name, msg_period=msg_period,
+                            self.freqs[name] = FrequencyNode(self.bot, name, msg_period=msg_period,
                                                        freqs=freqs)
-                            dim = self.freqs.get_output_dim()
-                            self.freqs_neurons = nengo.Ensemble(n_neurons=dim*n_neurons_p_dim, dimensions=dim)
-                            nengo.Connection(self.freqs, self.freqs_neurons)
+                            dim = self.freqs[name].get_output_dim()
+                            self.freqs_neurons[name] = nengo.Ensemble(n_neurons=dim*n_neurons_p_dim, dimensions=dim)
+                            nengo.Connection(self.freqs[name], self.freqs_neurons[name])
 
                             if self.b_probe:
-                                self.p_freqs_out = nengo.Probe(self.freqs, synapse=0.01)
-                                self.p_freqs_neurons_out = nengo.Probe(self.freqs_neurons, synapse=0.01)
-                                self.p_freqs_neurons_spikes = nengo.Probe(self.freqs_neurons.neurons, "spikes")
-                                self.p_freqs_neurons_vol = nengo.Probe(self.freqs_neurons.neurons, "voltage")
+                                self.p_freqs_out[name] = nengo.Probe(self.freqs[name], synapse=0.01)
+                                self.p_freqs_neurons_out[name] = nengo.Probe(self.freqs_neurons[name], synapse=0.01)
+                                self.p_freqs_neurons_spikes[name] = nengo.Probe(self.freqs_neurons[name].neurons, "spikes")
+                                self.p_freqs_neurons_vol[name] = nengo.Probe(self.freqs_neurons[name].neurons, "voltage")
 
             if len(sensors) > 0:
                 self.bot.activate_sensors(period=msg_period, **sensors)

@@ -1,6 +1,6 @@
 from . import nstbot
 import numpy as np
-#import threading
+import threading
 import multiprocessing
 import time
 
@@ -45,14 +45,19 @@ class OmniArmBot(nstbot.NSTBot):
         self.sensor_scale = {}
         self.sensor_map = {}
         self.add_sensor('bump', bit=0, range=1, length=1)
-        self.add_sensor('wheel', bit=1, range=100, length=8)  # we take only the first 3 vals (base motors)
+        # we have 8 values but we take only the first 3 vals (base motors)
+        self.add_sensor('wheel', bit=1, range=100, length=3)  
         # the hex encoded values need conversion
-        self.add_sensor('gyro', bit=2, range=2**32-1, length=4)  # we take only the first 3 vals (x, y, z)
+        # we have 4 values but we take only the first 3 vals 
+        self.add_sensor('gyro', bit=2, range=2**32-1, length=3)  
         self.add_sensor('accel', bit=3, range=2**32-1, length=3)
-        self.add_sensor('euler', bit=4, range=2**32-1, length=4)  # we take only the first 3 vals (x, y, z)
+        # we have 4 values but we take only the first 3 vals 
+        self.add_sensor('euler', bit=4, range=2**32-1, length=3)
         self.add_sensor('compass', bit=5, range=2**32-1, length=3)
-        self.add_sensor('servo', bit=7, range=4096, length=8)  # we only take the last 5 (arm motors)
-        self.add_sensor('load', bit=9, range=4096, length=8)  # we only take the last 5 (arm motors)
+        # we have 8 values but we only take the last 5 (arm motors)
+        self.add_sensor('servo', bit=7, range=4096, length=5)
+        # we have 8 values but we only take the last 5 (arm motors)
+        self.add_sensor('load', bit=9, range=4096, length=5) 
         self.sensor_bitmap = {"bump": [19, slice(0, 1)],
                               "wheel": [17,slice(0, 3)],
                               "gyro": [4,slice(0, 3)],
@@ -172,8 +177,8 @@ class OmniArmBot(nstbot.NSTBot):
                 time.sleep(1)
             self.set_arm_speed(20)
             time.sleep(0.5)
-            # self.conn_thread[name] = threading.Thread(target=self.sensor_loop, args=(name,))
-            self.conn_thread[name] = multiprocessing.Process(target=self.sensor_loop, args=(name,))
+            self.conn_thread[name] = threading.Thread(target=self.sensor_loop, args=(name,))
+            #self.conn_thread[name] = multiprocessing.Process(target=self.sensor_loop, args=(name,))
             self.conn_thread[name].daemon = True
             self.conn_thread[name].start()
 
@@ -184,10 +189,10 @@ class OmniArmBot(nstbot.NSTBot):
                 self.connection.send(name, 'R\n')
             else:
                 self.retina(name, False)
-            for process in multiprocessing.active_children():
-                if process.is_alive():
-                    process.join()
-                process.terminate()
+            # for process in multiprocessing.active_children():
+            #     if process.is_alive():
+            #         process.join()
+            #     process.terminate()
         self.base([0, 0, 0])
         self.arm([np.pi, np.pi, np.pi, 0])
         super(OmniArmBot, self).disconnect()
@@ -205,10 +210,10 @@ class OmniArmBot(nstbot.NSTBot):
     def show_image(self, name, decay=0.5, display_mode='quick'):
         if self.image[name] is None:
             self.image[name] = np.zeros((128, 128), dtype=float)
-            # self.retina_thread[name] = threading.Thread(target=self.image_loop,
-            #                           args=(name, decay, display_mode))
-            self.retina_thread[name] = multiprocessing.Process(target=self.image_loop,
+            self.retina_thread[name] = threading.Thread(target=self.image_loop,
                                       args=(name, decay, display_mode))
+            # self.retina_thread[name] = multiprocessing.Process(target=self.image_loop,
+            #                           args=(name, decay, display_mode))
             self.retina_thread[name].daemon = True
             self.retina_thread[name].start()
 

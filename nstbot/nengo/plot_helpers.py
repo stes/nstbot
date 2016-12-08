@@ -26,17 +26,22 @@ def plot_function(bot, sim, b_plot_spikes=False):
                 plt.figure("arm spikes")
                 rasterplot(sim.trange(), sim.data[bot.p_arm_neurons_spikes])
         if bot.b_freqs:
-            n_freqs = int(bot.freqs.get_output_dim()/3.0)
-            labels = ["x", "y", "certainty"]*n_freqs
-            plt.figure("freqs")
-            plt.plot(sim.trange(), sim.data[bot.p_freqs_out])
-            plt.plot(sim.trange(), sim.data[bot.p_freqs_neurons_out])
-            plt.legend(labels, prop=fontP)
+            for name in bot.bot.adress_list:
+                if "retina" in name:
+                    n_freqs = int(bot.freqs[name].get_output_dim()/3.0)
+                    labels = ["x", "y", "certainty"]*n_freqs
+                    plt.figure("freqs_" + name)
+                    plt.subplot(211)
+                    plt.plot(sim.trange(), sim.data[bot.p_freqs_out[name]])
+                    plt.legend(labels, prop=fontP)
+                    plt.subplot(212)
+                    plt.plot(sim.trange(), sim.data[bot.p_freqs_neurons_out[name]])
+                    plt.legend(labels, prop=fontP)
 
-            if b_plot_spikes:
-                # Plot the spiking output of the ensemble
-                plt.figure("freqs spikes")
-                rasterplot(sim.trange(), sim.data[bot.p_freqs_neurons_spikes])
+                    if b_plot_spikes:
+                        # Plot the spiking output of the ensemble
+                        plt.figure("freqs spikes")
+                        rasterplot(sim.trange(), sim.data[bot.p_freqs_neurons_spikes])
 
         if bool(bot.b_sensors):
             sensor_labels = ["v1", "v2", "v3", "v4", "v5"]
@@ -45,7 +50,10 @@ def plot_function(bot, sim, b_plot_spikes=False):
                     length = getattr(bot, k).get_output_dim()
                     labels = sensor_labels[:length]
                     plt.figure(k)
+                    plt.subplot(211)
                     plt.plot(sim.trange(), sim.data[getattr(bot, "p_"+k+"_out")])
+                    plt.legend(labels, prop=fontP)
+                    plt.subplot(212)
                     plt.plot(sim.trange(), sim.data[getattr(bot, "p_"+k+"_neurons_out")])
                     plt.legend(labels, prop=fontP)
 
