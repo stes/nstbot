@@ -54,7 +54,7 @@ if __name__ == "__main__":
       print "Reference"
       sim = nengo.Simulator(model)
     elif backend == "nengo_ocl":
-      "print GPU"
+      print "GPU"
       import nengo_ocl
       import os
       os.environ["PYOPENCL_CTX"]="0:0,1,2,3"
