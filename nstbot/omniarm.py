@@ -138,9 +138,10 @@ class OmniArmBot(nstbot.NSTBot):
 
     def activate_sensors(self, period=0.1, **names):
         bits = 0
-        for name in names:
+        for name, b_activate in names.items():
             bit = self.sensor_map[name]
-            bits += 1 << bit
+            if b_activate:
+                bits += 1 << bit
         cmd = '!I1,%d,%d\n' % (int(1.0/period), bits)
         self.connection.send('motors', cmd)
 
