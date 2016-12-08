@@ -20,6 +20,41 @@ with model:
     ctrl_base = nengo.Node([0,0,0])
     nengo.Connection(ctrl_base, bot.base)
 
-    ctrl_arm = nengo.Node([np.pi, np.pi, np.pi, 0])
+    def ctrl_arm_func(t):
+        t_mod = t % 60
+        if t_mod < 30:
+            return [np.pi, np.pi, np.pi, 0]
+        else:
+            return [np.pi/2., np.pi/2., np.pi/2., 1]
+
+    ctrl_arm = nengo.Node(ctrl_arm_func)
+
+    #ctrl_arm = nengo.Node([np.pi, np.pi, np.pi, 0])
+
     nengo.Connection(ctrl_arm, bot.arm)
 
+if __name__ == "__main__":
+    backend = "nengo" # select between different backends (nengo, nengo_ocl, nengo_spinnaker)
+    sim_time = 120 # set this to None to make the simulation run forever
+    sim = None # init sim variable
+
+    if backend == "nengo":
+      print "Reference"
+      sim = nengo.Simulator(model)
+    elif backend == "nengo_ocl":
+      "print GPU"
+      import nengo_ocl
+      import os
+      os.environ["PYOPENCL_CTX"]="0:0,1,2,3"
+      sim = nengo_ocl.Simulator(model)
+    elif backend == "nengo_spinnaker":
+      print "SpiNNaker"
+      import nengo_spinnaker
+      sim = nengo_spinnaker.Simulator(model)
+
+    if sim is not None:
+        if sim_time is not None:
+            sim.run(sim_time)
+        else:
+            while True:
+                sim.run(10)
