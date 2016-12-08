@@ -116,7 +116,7 @@ class OmniArmBotNetwork(nengo.Network):
                         if freqs:
                             self.freqs = FrequencyNode(self.bot, name, msg_period=msg_period,
                                                        freqs=freqs)
-                            dim = 3*self.freqs.get_output_dim()
+                            dim = self.freqs.get_output_dim()
                             self.freqs_neurons = nengo.Ensemble(n_neurons=dim*n_neurons_p_dim, dimensions=dim)
                             nengo.Connection(self.freqs, self.freqs_neurons)
             if len(sensors) > 0:
