@@ -57,15 +57,15 @@ class OmniArmBot(nstbot.NSTBot):
                               "compass": [6, slice(0, 3)],
                               "servo": [16, slice(3, 8)],
                               "load": [14, slice(3, 8)]}
-        self.base(0.0, 0.0, 0.0)
-        # FIXME correct arm init position
-        #self.arm(0.184, 0.172, 0.394, 0.052, 0.134)
+        self.base([0.0, 0.0, 0.0])
+        self.arm([np.pi, np.pi, np.pi, 0])
 
-    def base(self, x, y, z, msg_period=None):
+    def base(self, spd, msg_period=None):
         val_range = 100
-        x = int(x * val_range)
-        y = int(y * val_range)
-        z = int(z * val_range)
+
+        x = int(spd[0] * val_range)
+        y = int(spd[1] * val_range)
+        z = int(spd[2] * val_range)
 
         if x > val_range: x = val_range
         if x < -val_range: x = -val_range
@@ -76,11 +76,12 @@ class OmniArmBot(nstbot.NSTBot):
         cmd = '!P0%d\n!P1%d\n!P2%d\n' % (x, y, z)
         self.send('motors', 'base', cmd, msg_period=msg_period)
 
-    def base_pos(self, x, y, rot, msg_period=None):
+    def base_pos(self, pos2d, msg_period=None):
         val_range = 100
-        x = int(x * val_range)
-        y = int(y * val_range)
-        rot = int(rot * val_range)
+
+        x = int(pos2d[0] * val_range)
+        y = int(pos2d[1] * val_range)
+        rot = int(pos2d[2] * val_range)
 
         if x > val_range: x = val_range
         if x < -val_range: x = -val_range
@@ -91,23 +92,34 @@ class OmniArmBot(nstbot.NSTBot):
         cmd = '!D%d,%d,%d\n' % (x, y, rot)
         self.send('motors', 'base_pos', cmd, msg_period=msg_period)
 
-    def arm(self, j1, j2, j3, j4, j5, msg_period=None):
+    def arm(self, joints, msg_period=None):
         # motion should be limited by the dynamics of the robot
+
+        # convert to numpy for special ops
+        jnt = np.array(joints)
+
+        # apply rad to position map
+        pos = (jnt*10000).astype(dtype=np.int)
+
         # min pos and max pos in the range
-        val_range = 4096
-        min_pos = np.array([630, 250, 1100, 0, 550])
-        max_pos = np.array([2700, 2700, 3000, 600, 1000])
+        min_val = 0
+        max_val = 62830
 
-        joints = (np.array([j1, j2, j3, j4, j5]) * val_range).astype(dtype=np.int)
+        # apply range
+        pos[pos < min_val] = min_val
+        pos[pos > max_val] = max_val
 
-        # apply limits
-        joints[joints < min_pos] = min_pos[joints < min_pos]
-        joints[joints > max_pos] = max_pos[joints > max_pos]
+        # separate each link
+        [shoulder, elbow, hand, gripper] = pos
 
         # indices for motor IDs
-        for ids in range(3, 8, 1):
-            cmd = '!G%d%d\n' % (ids, joints[ids - 3])
-            self.send('motors', 'arm%d' % ids, cmd, msg_period=msg_period)
+        cmd = '!r%d,%d,%d\n' % (shoulder, elbow, hand)
+        if gripper == 0:
+            grip = '!x\n'
+        else:
+            grip = '!y\n'
+        cmd += grip
+        self.send('motors', 'arm', cmd, msg_period=msg_period)
 
     def add_sensor(self, name, bit, range, length):
         value = np.zeros(length)
@@ -154,11 +166,10 @@ class OmniArmBot(nstbot.NSTBot):
         for name in self.adress_list:
             if 'retina' not in name:
                 self.connection.send(name, '!I0\n')
-                self.base(0, 0, 0)
-                # FIXME correct arm init position
-                # self.arm(0.184, 0.172, 0.394, 0.052, 0.134)
             else:
                 self.retina(name, False)
+        self.base([0, 0, 0])
+        self.arm([np.pi, np.pi, np.pi, 0])
         super(OmniArmBot, self).disconnect()
 
     def retina(self, name, active, bytes_in_timestamp=4):

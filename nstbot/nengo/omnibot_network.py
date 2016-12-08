@@ -10,16 +10,16 @@ class BaseNode(nengo.Node):
         self.msg_period = msg_period
 
     def move_base(self, t, x):
-        self.bot.base(x[0], x[1], x[2], msg_period=self.msg_period)
+        self.bot.base([x[0], x[1], x[2]], msg_period=self.msg_period)
 
 class ArmNode(nengo.Node):
     def __init__(self, bot, msg_period):
-        super(ArmNode, self).__init__(self.move_arm, size_in=5, size_out=0)
+        super(ArmNode, self).__init__(self.move_arm, size_in=4, size_out=0)
         self.bot = bot
         self.msg_period = msg_period
 
     def move_arm(self, t, x):
-        self.bot.arm(x[0], x[1], x[2], x[3], x[4], msg_period=self.msg_period)
+        self.bot.arm([x[0], x[1], x[2], x[3]], msg_period=self.msg_period)
 
 class RetinaNode(nengo.Node):
     def __init__(self, bot, name, msg_period):

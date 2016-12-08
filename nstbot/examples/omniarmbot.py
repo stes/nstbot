@@ -1,5 +1,6 @@
 import time
 import nstbot
+import numpy as np
 
 bot = nstbot.OmniArmBot()
 address_list = {'retina_left': ['10.162.177.29', 54320],
@@ -32,5 +33,6 @@ while True:
         if "retina" in key:
             print "tracked point in " + key + ": ", [bot.p_x[key],  bot.p_y[key]]
     print '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
-    bot.base_pos(0.0, 0.0, 0.5)
+    bot.base([0.0, 0.0, 0.5])
+    bot.arm([np.pi, np.pi, np.pi, 0])
     time.sleep(0.1)

@@ -12,15 +12,14 @@ with model:
 
     bot = nstbot.OmniArmBotNetwork(
             nstbot.SocketList(address_list),
-            base=True, retina=True, freqs=[100, 300, 400],
+            base=True, retina=True, arm=True, freqs=[100, 300, 400],
             accel=True, bump=True, wheel=True, euler=True, servo=True, load=True,
             compass=True, gyro=True, msg_period=0.1)
 
 
-    ctrl_base = nengo.Node([0, 0, 0])
+    ctrl_base = nengo.Node([0,0,0])
     nengo.Connection(ctrl_base, bot.base)
 
-
-    # ctrl_arm = nengo.Node([0.184, 0.172, 0.394, 0.052, 0.134])
-    # nengo.Connection(ctrl_arm, bot.arm)
+    ctrl_arm = nengo.Node([np.pi, np.pi, np.pi, 0])
+    nengo.Connection(ctrl_arm, bot.arm)
 
