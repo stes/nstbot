@@ -62,6 +62,8 @@ class SensorNode(nengo.Node):
         if self.bot.get_sensor(self.key) is not None or self.bot.get_sensor(self.key) != []:
             if self.length == len(self.bot.get_sensor(self.key)):
                 return self.bot.get_sensor(self.key)
+        else:
+            return np.zeros(self.length)
 
 
 
