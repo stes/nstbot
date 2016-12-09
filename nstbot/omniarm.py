@@ -129,16 +129,16 @@ class OmniArmBot(nstbot.NSTBot):
 
         # indices for motor IDs
         cmd = '!r%d,%d,%d\n' % (shoulder, elbow, hand)
-        if gripper == 0:
-            grip = '!x\n'
-        else:
+        if abs(float(gripper - 1)) < 0.0001:
             grip = '!y\n'
+        else:
+            grip = '!x\n'
         cmd += grip
         self.send('motors', 'arm', cmd, msg_period=msg_period)
 
     def set_arm_speed(self, x, msg_period=None):
         if x > 0:
-            self.send('motors', 'arm', '!P3%d\n!P4%d\n!P5%d\n!P6500\n' % (x, x, x), msg_period=msg_period)
+            self.send('motors', 'arm', '!P3%d\n!P4%d\n!P5%d\n!P750\n' % (x, x, x), msg_period=msg_period)
         else:
             self.send('motors', 'arm', '!P35\n!P45\n!P55\n', msg_period=msg_period)
 
