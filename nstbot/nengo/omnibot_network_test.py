@@ -19,18 +19,24 @@ with model:
             accel=True, bump=True, wheel=True, euler=True,
             servo=True, load=True,compass=True, gyro=True, 
             # NOTE:currently a msg_period of 0.2 (or 5 Hz) is the maximum value the robot firmware can handle
-            msg_period=0.2)
+            send_msg_period=0.2, receive_msg_period=0.1)
 
+    def ctrl_base_func(t):
+        t_mod = t % 20
+        if t_mod > 10:
+            return [0.5, 0.5, 0.5]
+        else:
+            return [-0.5, -0.5, -0.5]
 
-    ctrl_base = nengo.Node([0.5, 0.5, 0.5])
+    ctrl_base = nengo.Node(ctrl_base_func)
     nengo.Connection(ctrl_base, bot.base)
 
     def ctrl_arm_func(t):
         t_mod = t % 20
         if t_mod > 10:
-            return [np.pi, np.pi, np.pi, 0]
+            return [np.pi, np.pi, np.pi, 0.0]
         else:
-            return [np.pi, np.pi, np.pi/2, 1]
+            return [np.pi, np.pi, np.pi/2, 1.0]
 
     ctrl_arm = nengo.Node(ctrl_arm_func)
 

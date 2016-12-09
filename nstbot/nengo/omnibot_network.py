@@ -82,7 +82,8 @@ class SensorNode(nengo.Node):
 
 
 class OmniArmBotNetwork(nengo.Network):
-    def __init__(self, connection, msg_period=0.01, label='OmniArmBot',
+    def __init__(self, connection, send_msg_period=0.01, receive_msg_period=0.01,
+                 label='OmniArmBot',
                  n_neurons_p_dim=None, b_probe = False,
                  base=False, arm=False, retina=False, freqs=[],
                  **sensors):
@@ -111,7 +112,7 @@ class OmniArmBotNetwork(nengo.Network):
 
         with self:
             if base:
-                self.base = BaseNode(self.bot, msg_period=msg_period)
+                self.base = BaseNode(self.bot, msg_period=send_msg_period)
                 if n_neurons_p_dim is not None:
                     dim = self.base.get_input_dim()
                     self.base_neurons = nengo.Ensemble(n_neurons=dim*n_neurons_p_dim, dimensions=dim)
@@ -122,7 +123,7 @@ class OmniArmBotNetwork(nengo.Network):
                         self.p_base_neurons_vol = nengo.Probe(self.base_neurons.neurons, "voltage")
                     
             if arm:
-                self.arm = ArmNode(self.bot, msg_period=msg_period)
+                self.arm = ArmNode(self.bot, msg_period=send_msg_period)
                 if n_neurons_p_dim is not None:
                     dim = self.arm.get_input_dim()
                     self.arm_neurons = nengo.Ensemble(n_neurons=dim*n_neurons_p_dim, dimensions=dim)
@@ -137,10 +138,10 @@ class OmniArmBotNetwork(nengo.Network):
                     if "retina" in name:
                         self.bot.retina(name, True)
                         # if retina:
-                        #     self.retina = RetinaNode(self.bot, name, msg_period=msg_period)
+                        #     self.retina = RetinaNode(self.bot, name, msg_period=receive_msg_period)
                         if freqs:
                             self.b_freqs = True
-                            self.freqs[name] = FrequencyNode(self.bot, name, msg_period=msg_period,
+                            self.freqs[name] = FrequencyNode(self.bot, name, msg_period=receive_msg_period,
                                                        freqs=freqs)
                             if n_neurons_p_dim is not None:
                                 dim = self.freqs[name].get_output_dim()
@@ -154,7 +155,7 @@ class OmniArmBotNetwork(nengo.Network):
                                     self.p_freqs_neurons_vol[name] = nengo.Probe(self.freqs_neurons[name].neurons, "voltage")
 
             if len(sensors) > 0:
-                self.bot.activate_sensors(period=msg_period, **sensors)
+                self.bot.activate_sensors(period=receive_msg_period, **sensors)
                 time.sleep(5.0)
                 for k, v in sensors.items():
                     self.b_sensors[k] = v
