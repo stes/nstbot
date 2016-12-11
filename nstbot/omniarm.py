@@ -1,7 +1,6 @@
 from . import nstbot
 import numpy as np
 import threading
-import multiprocessing
 import time
 
 
@@ -47,16 +46,10 @@ class OmniArmBot(nstbot.NSTBot):
                 self.track_certainty[name] = None
                 self.last_timestamp[name] = None
             if "tracker" in name:
-                if 'left' in name:
-                    trk_id = 0
-                elif 'right' in name:
-                    trk_id = 1
-                else:
-                    trk_id = 2
-                self.trk_px[trk_id] = None
-                self.trk_py[trk_id] = None
-                self.trk_radius[trk_id] = None
-                self.trk_certainty[trk_id] = None
+                self.trk_px[name] = None
+                self.trk_py[name] = None
+                self.trk_radius[name] = None
+                self.trk_certainty[name] = None
         self.sensor = {}
         self.sensor_scale = {}
         self.sensor_map = {}
@@ -228,18 +221,19 @@ class OmniArmBot(nstbot.NSTBot):
             self.retina_packet_size[name] = None
         self.connection.send(name, cmd)
 
-    def tracker(self, channel, active, tracking_period, streaming_period):
+    def tracker(self, name, active, tracking_period, streaming_period):
+        if 'left' in name:
+            channel = 0
+        elif 'right' in name:
+            channel = 1
+        else:
+            channel = 2
         if active:
             cmd = '!TD%d=%d\n!TR=%d\n' % (channel, tracking_period, streaming_period)
         else:
-            cmd = '!TD%d=0\n!TR=0\n' % (channel)
-        if channel == 0:
-            name = 'tracker_left'
-        elif channel == 1:
-            name = 'tracker_right'
-        else:
-            name = 'tracker_arm'
+            cmd = '!TD%d=0\n!TR=0\n' % channel
         self.connection.send(name, cmd)
+
 
     def show_image(self, name, decay=0.5, display_mode='quick'):
         if self.image[name] is None:
@@ -383,7 +377,7 @@ class OmniArmBot(nstbot.NSTBot):
                         self.process_ascii('-T' + proc_cmd)
 
             if "retina" not in name:
-                # and process the ascii events too
+                # and process the ascii events too from the base and arm sensors
                 while '\n\n' in buffered_ascii:
                     cmd, buffered_ascii = buffered_ascii.split('\n\n', 1)
                     if '-I' in cmd:
@@ -392,6 +386,7 @@ class OmniArmBot(nstbot.NSTBot):
 
     def process_ascii(self, message):
         try:
+            # handle sensory data
             if message[:2] == '-I':
                 data = message[2:].split()
                 sp_data = data[1:]
@@ -414,6 +409,7 @@ class OmniArmBot(nstbot.NSTBot):
                                 sensors = [float(x)*scale for x in vals[sliced]]
                             self.sensor[index] = sensors
                             self.sensor[self.sensor_map[index]] = sensors
+            # handle uDVS tracker data
             if message[:2] == '-T':
                 trk_data = message[2:]
                 trk_id = trk_data[0]        # uDVS tracker id
@@ -421,10 +417,16 @@ class OmniArmBot(nstbot.NSTBot):
                 trk_ypos = trk_data[5:9]    # ypos 4byte HEX, scale = 2^16
                 trk_rad = trk_data[9:11]    # tracking radius 2byte HEX, scale = 2^8
                 trk_cert = trk_data[11:13]  # tracking certainty 2byte HEX, scale = 2^8
-                self.trk_px[trk_id] = float.fromhex(trk_xpos)*(2**16-1)
-                self.trk_py[trk_id] = float.fromhex(trk_ypos)*(2**16-1)
-                self.trk_radius[trk_id] = float.fromhex(trk_rad)*(2**8-1)
-                self.trk_certainty[trk_id] = float.fromhex(trk_cert)*(2**8-1)
+                if trk_id == 0:
+                    name_trk = 'tracker_left'
+                elif trk_id == 1:
+                    name_trk = 'tracker_right'
+                else:
+                    name_trk = 'tracker_arm'
+                self.trk_px[name_trk] = float.fromhex(trk_xpos)*(2**16-1)
+                self.trk_py[name_trk] = float.fromhex(trk_ypos)*(2**16-1)
+                self.trk_radius[name_trk] = float.fromhex(trk_rad)*(2**8-1)
+                self.trk_certainty[name_trk] = float.fromhex(trk_cert)*(2**8-1)
         except:
             pass
             # print('Error processing "%s"' % message)
@@ -519,7 +521,6 @@ class OmniArmBot(nstbot.NSTBot):
                 self.p_x[name][i] = px
                 self.p_y[name][i] = py
 
-
     def track_spike_rate(self,name, **regions):
         self.count_spike_regions[name] = regions
         self.count_regions[name] = {}
@@ -554,14 +555,7 @@ class OmniArmBot(nstbot.NSTBot):
         y = - self.p_y[name][index] / 64.0 + 1
         return x, y, self.track_certainty[name][index]
 
-
     def get_tracker_info(self, name):
-        if name == 'tracker_left':
-            trid = 0
-        elif name == 'tracker_right':
-            trid = 1
-        else:
-            trid = 2
-        x = self.trk_px[trid]/ 64.0 - 1
-        y = - self.trk_py[trid]/ 64.0 + 1
-        return x, y, self.trk_radius[trid], self.trk_certainty[trid]
+        x = self.trk_px[name] / 64.0 - 1
+        y = - self.trk_py[name] / 64.0 + 1
+        return x, y, self.trk_radius[name], self.trk_certainty[name]

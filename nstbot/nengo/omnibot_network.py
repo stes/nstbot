@@ -82,14 +82,14 @@ class SensorNode(nengo.Node):
 
 class TrackerNode(nengo.Node):
     def __init__(self, name, bot, tr_freq, st_freq):
-        super(TrackerNode, self).__init__(self.tr_freq, self.st_freq, label=name,
-                                            size_in=0, size_out=4)
+        super(TrackerNode, self).__init__(self.tracker, label=name, size_in=0, size_out=4)
         self.bot = bot
         self.name = name
         self.msg_period = st_freq
+        self.bot.tracker(name, True, tr_freq, st_freq)
         self.result = np.zeros(4, dtype='float')
 
-    def tracked_feq(self, t):
+    def tracker(self, t):
         return self.bot.get_tracker_info(self.name)
 
     def get_output_dim(self):
@@ -99,9 +99,9 @@ class TrackerNode(nengo.Node):
 class OmniArmBotNetwork(nengo.Network):
     def __init__(self, connection, send_msg_period=0.01, receive_msg_period=0.01,
                  label='OmniArmBot',
-                 n_neurons_p_dim=None, b_probe = False,
+                 n_neurons_p_dim=None, b_probe=False,
                  base=False, arm=False, retina=False, freqs=[],
-                 tracker=False,
+                 tracker=False, tracker_period=None
                  **sensors):
         super(OmniArmBotNetwork, self).__init__(label=label)
         self.bot = nstbot.OmniArmBot()
@@ -122,11 +122,12 @@ class OmniArmBotNetwork(nengo.Network):
         self.p_freqs_neurons_spikes = {}
         self.p_freqs_neurons_vol = {}
 
-        # TODO INTEGRATE THE TRACKER IN THE NETWORK
         for name in self.bot.adress_list:
             if 'retina' in name:
                 self.bot.retina(name, True)
                 self.bot.track_frequencies(name, freqs=freqs)
+            if 'tracker' in name:
+                self.bot.tracker(name, True, tracking_period=tracker_period, streaming_period=receive_msg_period)
 
         with self:
             if base:
@@ -139,7 +140,7 @@ class OmniArmBotNetwork(nengo.Network):
                         self.p_base_neurons_out = nengo.Probe(self.base_neurons, synapse=0.01)
                         self.p_base_neurons_spikes = nengo.Probe(self.base_neurons.neurons, "spikes")
                         self.p_base_neurons_vol = nengo.Probe(self.base_neurons.neurons, "voltage")
-                    
+
             if arm:
                 self.arm = ArmNode(self.bot, msg_period=send_msg_period)
                 if n_neurons_p_dim is not None:
@@ -160,7 +161,7 @@ class OmniArmBotNetwork(nengo.Network):
                         if freqs:
                             self.b_freqs = True
                             self.freqs[name] = FrequencyNode(self.bot, name, msg_period=receive_msg_period,
-                                                       freqs=freqs)
+                                                             freqs=freqs)
                             if n_neurons_p_dim is not None:
                                 dim = self.freqs[name].get_output_dim()
                                 self.freqs_neurons[name] = nengo.Ensemble(n_neurons=dim*n_neurons_p_dim, dimensions=dim)
@@ -171,6 +172,14 @@ class OmniArmBotNetwork(nengo.Network):
                                     self.p_freqs_neurons_out[name] = nengo.Probe(self.freqs_neurons[name], synapse=0.01)
                                     self.p_freqs_neurons_spikes[name] = nengo.Probe(self.freqs_neurons[name].neurons, "spikes")
                                     self.p_freqs_neurons_vol[name] = nengo.Probe(self.freqs_neurons[name].neurons, "voltage")
+
+            # TODO INTEGRATE THE TRACKER IN THE NETWORK
+            if tracker:
+                names = connection.get_socket_keys()
+                for name in names:
+                    if "tracker" in name:
+                        self.bot.retina(name, True)
+                        self.bot.tracker(name, True, tracking_period=tracker_period, streaming_period=receive_msg_period)
 
             if len(sensors) > 0:
                 self.bot.activate_sensors(period=receive_msg_period, **sensors)
@@ -183,11 +192,12 @@ class OmniArmBotNetwork(nengo.Network):
                             dim = getattr(self, k).get_output_dim()
                             setattr(self, k+"_neurons", nengo.Ensemble(n_neurons=dim*n_neurons_p_dim, dimensions=dim))
                             nengo.Connection(getattr(self, k), getattr(self, k+"_neurons"))
-                            
+
                             if self.b_probe:
                                 setattr(self, "p_"+k+"_out", nengo.Probe(getattr(self,k), synapse=0.01))
                                 setattr(self, "p_"+k+"_neurons_out", nengo.Probe(getattr(self,k+"_neurons"), synapse=0.01))
                                 setattr(self, "p_"+k+"_neurons_spikes", nengo.Probe(getattr(self,k+"_neurons").neurons, "spikes"))
                                 setattr(self, "p_"+k+"_neurons_vol", nengo.Probe(getattr(self,k+"_neurons").neurons, "voltage"))
+
 
 
