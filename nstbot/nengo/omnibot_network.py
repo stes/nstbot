@@ -80,12 +80,28 @@ class SensorNode(nengo.Node):
         return self.length
 
 
+class TrackerNode(nengo.Node):
+    def __init__(self, name, bot, tr_freq, st_freq):
+        super(TrackerNode, self).__init__(self.tr_freq, self.st_freq, label=name,
+                                            size_in=0, size_out=4)
+        self.bot = bot
+        self.name = name
+        self.msg_period = st_freq
+        self.result = np.zeros(4, dtype='float')
+
+    def tracked_feq(self, t):
+        return self.bot.get_tracker_info(self.name)
+
+    def get_output_dim(self):
+        return len(self.result)
+
 
 class OmniArmBotNetwork(nengo.Network):
     def __init__(self, connection, send_msg_period=0.01, receive_msg_period=0.01,
                  label='OmniArmBot',
                  n_neurons_p_dim=None, b_probe = False,
                  base=False, arm=False, retina=False, freqs=[],
+                 tracker=False,
                  **sensors):
         super(OmniArmBotNetwork, self).__init__(label=label)
         self.bot = nstbot.OmniArmBot()
@@ -99,12 +115,14 @@ class OmniArmBotNetwork(nengo.Network):
         self.b_retina = retina
         self.b_freqs = False
         self.b_sensors = {}
+        self.b_tracker = tracker
 
         self.p_freqs_out = {}
         self.p_freqs_neurons_out = {}
         self.p_freqs_neurons_spikes = {}
         self.p_freqs_neurons_vol = {}
 
+        # TODO INTEGRATE THE TRACKER IN THE NETWORK
         for name in self.bot.adress_list:
             if 'retina' in name:
                 self.bot.retina(name, True)

@@ -31,6 +31,11 @@ class OmniArmBot(nstbot.NSTBot):
         self.conn_thread = {}
         self.retina_thread = {}
 
+        self.trk_px = {}
+        self.trk_py = {}
+        self.trk_radius = {}
+        self.trk_certainty = {}
+
         for name in self.adress_list:
             if "retina" in name:
                 self.retina_packet_size[name] = None
@@ -41,6 +46,17 @@ class OmniArmBot(nstbot.NSTBot):
                 self.p_y[name] = None
                 self.track_certainty[name] = None
                 self.last_timestamp[name] = None
+            if "tracker" in name:
+                if 'left' in name:
+                    trk_id = 0
+                elif 'right' in name:
+                    trk_id = 1
+                else:
+                    trk_id = 2
+                self.trk_px[trk_id] = None
+                self.trk_py[trk_id] = None
+                self.trk_radius[trk_id] = None
+                self.trk_certainty[trk_id] = None
         self.sensor = {}
         self.sensor_scale = {}
         self.sensor_map = {}
@@ -212,6 +228,19 @@ class OmniArmBot(nstbot.NSTBot):
             self.retina_packet_size[name] = None
         self.connection.send(name, cmd)
 
+    def tracker(self, channel, active, tracking_period, streaming_period):
+        if active:
+            cmd = '!TD%d=%d\n!TR=%d\n' % (channel, tracking_period, streaming_period)
+        else:
+            cmd = '!TD%d=0\n!TR=0\n' % (channel)
+        if channel == 0:
+            name = 'tracker_left'
+        elif channel == 1:
+            name = 'tracker_right'
+        else:
+            name = 'tracker_arm'
+        self.connection.send(name, cmd)
+
     def show_image(self, name, decay=0.5, display_mode='quick'):
         if self.image[name] is None:
             self.image[name] = np.zeros((128, 128), dtype=float)
@@ -345,6 +374,14 @@ class OmniArmBot(nstbot.NSTBot):
                     if "retina" in name:
                         self.process_retina(name, data_all)
 
+            if "retina" not in name and "tracker" in name:
+                # process ascii events from embedded tracker
+                while '\n' in buffered_ascii:
+                    cmd, buffered_ascii = buffered_ascii.split('\n', 1)
+                    if '-T' in cmd:
+                        dbg, proc_cmd = cmd.split('-T', 1)
+                        self.process_ascii('-T' + proc_cmd)
+
             if "retina" not in name:
                 # and process the ascii events too
                 while '\n\n' in buffered_ascii:
@@ -377,6 +414,17 @@ class OmniArmBot(nstbot.NSTBot):
                                 sensors = [float(x)*scale for x in vals[sliced]]
                             self.sensor[index] = sensors
                             self.sensor[self.sensor_map[index]] = sensors
+            if message[:2] == '-T':
+                trk_data = message[2:]
+                trk_id = trk_data[0]        # uDVS tracker id
+                trk_xpos = trk_data[1:5]    # xpos 4byte HEX, scale = 2^16
+                trk_ypos = trk_data[5:9]    # ypos 4byte HEX, scale = 2^16
+                trk_rad = trk_data[9:11]    # tracking radius 2byte HEX, scale = 2^8
+                trk_cert = trk_data[11:13]  # tracking certainty 2byte HEX, scale = 2^8
+                self.trk_px[trk_id] = float.fromhex(trk_xpos)*(2**16-1)
+                self.trk_py[trk_id] = float.fromhex(trk_ypos)*(2**16-1)
+                self.trk_radius[trk_id] = float.fromhex(trk_rad)*(2**8-1)
+                self.trk_certainty[trk_id] = float.fromhex(trk_cert)*(2**8-1)
         except:
             pass
             # print('Error processing "%s"' % message)
@@ -505,3 +553,15 @@ class OmniArmBot(nstbot.NSTBot):
         x = self.p_x[name][index] / 64.0 - 1
         y = - self.p_y[name][index] / 64.0 + 1
         return x, y, self.track_certainty[name][index]
+
+
+    def get_tracker_info(self, name):
+        if name == 'tracker_left':
+            trid = 0
+        elif name == 'tracker_right':
+            trid = 1
+        else:
+            trid = 2
+        x = self.trk_px[trid]/ 64.0 - 1
+        y = - self.trk_py[trid]/ 64.0 + 1
+        return x, y, self.trk_radius[trid], self.trk_certainty[trid]
