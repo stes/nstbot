@@ -15,7 +15,7 @@ with model:
     bot = nstbot.OmniArmBotNetwork(
             nstbot.SocketList(address_list), 
             n_neurons_p_dim=None, b_probe=False,
-            base=True, retina=False, arm=True, #freqs=[100],
+            base=True, retina=False, arm=True, tracker=True, freqs=[100],
             accel=True, bump=True, wheel=True, euler=True,
             servo=True, load=True,compass=True, gyro=True, 
             # NOTE:currently a msg_period of 0.2 (or 5 Hz) is the maximum value the robot firmware can handle

@@ -46,10 +46,16 @@ class OmniArmBot(nstbot.NSTBot):
                 self.track_certainty[name] = None
                 self.last_timestamp[name] = None
             if "tracker" in name:
-                self.trk_px[name] = None
-                self.trk_py[name] = None
-                self.trk_radius[name] = None
-                self.trk_certainty[name] = None
+                if 'left' in name:
+                    trk_id = 0
+                elif 'right' in name:
+                    trk_id = 1
+                else:
+                    trk_id = 2
+                self.trk_px[trk_id] = None
+                self.trk_py[trk_id] = None
+                self.trk_radius[trk_id] = None
+                self.trk_certainty[trk_id] = None
         self.sensor = {}
         self.sensor_scale = {}
         self.sensor_map = {}
@@ -221,17 +227,19 @@ class OmniArmBot(nstbot.NSTBot):
             self.retina_packet_size[name] = None
         self.connection.send(name, cmd)
 
-    def tracker(self, name, active, tracking_period, streaming_period):
-        if 'left' in name:
-            channel = 0
-        elif 'right' in name:
-            channel = 1
-        else:
-            channel = 2
+    def tracker(self, channel, active, tracking_freq, streaming_period):
+        # calculate tracking period from frequency
+        tracking_period = int(np.ceil(tracking_freq*1000*1000))
         if active:
             cmd = '!TD%d=%d\n!TR=%d\n' % (channel, tracking_period, streaming_period)
         else:
-            cmd = '!TD%d=0\n!TR=0\n' % channel
+            cmd = '!TD%d=0\n!TR=0\n' % (channel)
+        if channel == 0:
+            name = 'tracker_left'
+        elif channel == 1:
+            name = 'tracker_right'
+        else:
+            name = 'tracker_arm'
         self.connection.send(name, cmd)
 
 
@@ -412,21 +420,20 @@ class OmniArmBot(nstbot.NSTBot):
             # handle uDVS tracker data
             if message[:2] == '-T':
                 trk_data = message[2:]
-                trk_id = trk_data[0]        # uDVS tracker id
-                trk_xpos = trk_data[1:5]    # xpos 4byte HEX, scale = 2^16
-                trk_ypos = trk_data[5:9]    # ypos 4byte HEX, scale = 2^16
-                trk_rad = trk_data[9:11]    # tracking radius 2byte HEX, scale = 2^8
-                trk_cert = trk_data[11:13]  # tracking certainty 2byte HEX, scale = 2^8
-                if trk_id == 0:
-                    name_trk = 'tracker_left'
-                elif trk_id == 1:
-                    name_trk = 'tracker_right'
-                else:
-                    name_trk = 'tracker_arm'
-                self.trk_px[name_trk] = float.fromhex(trk_xpos)*(2**16-1)
-                self.trk_py[name_trk] = float.fromhex(trk_ypos)*(2**16-1)
-                self.trk_radius[name_trk] = float.fromhex(trk_rad)*(2**8-1)
-                self.trk_certainty[name_trk] = float.fromhex(trk_cert)*(2**8-1)
+                # make sure, that the message is not the DVS confirmation msg:
+                # TODO: do we need to track more than one frequency per retina? 
+                # if yes, how do we get the information about the current frequency from the incoming message?
+                # in this case we need to make adjustments accodringly here, in the get_tracker function and in the firmware
+                if len(trk_data) > 5:
+                    trk_id = trk_data[0]        # uDVS tracker id
+                    trk_xpos = trk_data[1:5]    # xpos 4byte HEX, scale = 2^16
+                    trk_ypos = trk_data[5:9]    # ypos 4byte HEX, scale = 2^16
+                    trk_rad = trk_data[9:11]    # tracking radius 2byte HEX, scale = 2^8
+                    trk_cert = trk_data[11:13]  # tracking certainty 2byte HEX, scale = 2^8
+                    self.trk_px[trk_id] = float.fromhex(trk_xpos)*(2**16-1)
+                    self.trk_py[trk_id] = float.fromhex(trk_ypos)*(2**16-1)
+                    self.trk_radius[trk_id] = float.fromhex(trk_rad)*(2**8-1)
+                    self.trk_certainty[trk_id] = float.fromhex(trk_cert)*(2**8-1)
         except:
             pass
             # print('Error processing "%s"' % message)
@@ -556,6 +563,12 @@ class OmniArmBot(nstbot.NSTBot):
         return x, y, self.track_certainty[name][index]
 
     def get_tracker_info(self, name):
-        x = self.trk_px[name] / 64.0 - 1
-        y = - self.trk_py[name] / 64.0 + 1
-        return x, y, self.trk_radius[name], self.trk_certainty[name]
+        if "left" in name:
+            trid = 0
+        elif "right" in name:
+            trid = 1
+        else:
+            trid = 2
+        x = self.trk_px[trid]/ 64.0 - 1
+        y = - self.trk_py[trid]/ 64.0 + 1
+        return x, y, self.trk_radius[trid], self.trk_certainty[trid]
