@@ -47,10 +47,10 @@ class OmniArmBot(nstbot.NSTBot):
                 self.last_timestamp[name] = None
  
                 # initialize variables for embedded tracker           
-                self.trk_px[name] = np.array([None]*8)
-                self.trk_py[name] = np.array([None]*8)
-                self.trk_radius[name] = np.array([None]*8)
-                self.trk_certainty[name] = np.array([None]*8)
+                self.trk_px[name] = np.zeros(8)
+                self.trk_py[name] = np.zeros(8)
+                self.trk_radius[name] = np.zeros(8)
+                self.trk_certainty[name] = np.zeros(8)
         self.sensor = {}
         self.sensor_scale = {}
         self.sensor_map = {}
@@ -226,8 +226,16 @@ class OmniArmBot(nstbot.NSTBot):
         # calculate tracking period from frequency
         tracking_periods = np.array([int(np.ceil(freq*1000*1000)) for freq in tracking_freqs]) 
 
+        if active:
+            # initalize all channels to zero
+            for channel in range(8):
+                cmd = '!TD%d=0\n' % channel
+                self.connection.send(name, cmd)
+
+
         for channel, tracking_period in enumerate(tracking_periods):
             if active:
+                # now set all channels, which are specified for tracking
                 cmd = '!TD%d=%d\n!TR=%d\n' % (channel, tracking_period, streaming_period)
             else:
                 cmd = '!TD%d=0\n!TR=0\n' % (channel)
