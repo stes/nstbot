@@ -133,21 +133,8 @@ class OmniArmBotNetwork(nengo.Network):
         for name in self.bot.adress_list:
             if 'retina' in name:
                 self.bot.retina(name, True)
-                if tracker:
-                    # TODO: come the information from the embedded tracking on the same port as the DVS, on the motor port or on a completely different port?
-                    if "left" in name:
-                        # TODO: can only one frequency be tracked on board or many? If only one is possible, we can get rid of this for-loop
-                        for freq in freqs:
-                            self.bot.tracker(channel=0, active=True, tracking_freq=freq, streaming_period=receive_msg_period)
-                    elif "right" in name:
-                        # TODO: can only one frequency be tracked on board or many? If only one is possible, we can get rid of this for-loop
-                        for freq in freqs:
-                            self.bot.tracker(channel=1, active=True, tracking_freq=freq, streaming_period=receive_msg_period)
-                    else:
-                        # TODO: can only one frequency be tracked on board or many? If only one is possible, we can get rid of this for-loop
-                        for freq in freqs:
-                            self.bot.tracker(channel=2, active=True, tracking_freq=freq, streaming_period=receive_msg_period)
-
+                if tracker:    
+                    self.bot.tracker(name=name, active=True, tracking_freq=freqs, streaming_period=receive_msg_period)
                 else:
                     self.bot.track_frequencies(name, freqs=freqs)
 

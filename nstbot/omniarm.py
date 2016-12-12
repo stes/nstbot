@@ -45,17 +45,12 @@ class OmniArmBot(nstbot.NSTBot):
                 self.p_y[name] = None
                 self.track_certainty[name] = None
                 self.last_timestamp[name] = None
-            if "tracker" in name:
-                if 'left' in name:
-                    trk_id = 0
-                elif 'right' in name:
-                    trk_id = 1
-                else:
-                    trk_id = 2
-                self.trk_px[trk_id] = None
-                self.trk_py[trk_id] = None
-                self.trk_radius[trk_id] = None
-                self.trk_certainty[trk_id] = None
+ 
+                # initialize variables for embedded tracker           
+                self.trk_px[name] = [None]*8
+                self.trk_py[name] = [None]*8
+                self.trk_radius[name] = [None]*8
+                self.trk_certainty[name] = [None]*8
         self.sensor = {}
         self.sensor_scale = {}
         self.sensor_map = {}
@@ -227,19 +222,16 @@ class OmniArmBot(nstbot.NSTBot):
             self.retina_packet_size[name] = None
         self.connection.send(name, cmd)
 
-    def tracker(self, channel, active, tracking_freq, streaming_period):
+    def tracker(self, name, active, tracking_freqs, streaming_period):
         # calculate tracking period from frequency
-        tracking_period = int(np.ceil(tracking_freq*1000*1000))
-        if active:
-            cmd = '!TD%d=%d\n!TR=%d\n' % (channel, tracking_period, streaming_period)
-        else:
-            cmd = '!TD%d=0\n!TR=0\n' % (channel)
-        if channel == 0:
-            name = 'tracker_left'
-        elif channel == 1:
-            name = 'tracker_right'
-        else:
-            name = 'tracker_arm'
+        tracking_periods = np.array([int(np.ceil(freq*1000*1000)) for freq in tracking_freqs]) 
+
+        for channel, tracking_period in enumerate(tracking_periods):
+            if active:
+                cmd = '!TD%d=%d\n!TR=%d\n' % (channel, tracking_period, streaming_period)
+            else:
+                cmd = '!TD%d=0\n!TR=0\n' % (channel)
+            
         self.connection.send(name, cmd)
 
 
@@ -375,24 +367,24 @@ class OmniArmBot(nstbot.NSTBot):
                     # now process those retina events
                     if "retina" in name:
                         self.process_retina(name, data_all)
-
-            if "retina" not in name and "tracker" in name:
-                # process ascii events from embedded tracker
-                while '\n' in buffered_ascii:
-                    cmd, buffered_ascii = buffered_ascii.split('\n', 1)
-                    if '-T' in cmd:
-                        dbg, proc_cmd = cmd.split('-T', 1)
-                        self.process_ascii('-T' + proc_cmd)
-
+                
             if "retina" not in name:
                 # and process the ascii events too from the base and arm sensors
                 while '\n\n' in buffered_ascii:
                     cmd, buffered_ascii = buffered_ascii.split('\n\n', 1)
                     if '-I' in cmd:
                         dbg, proc_cmd = cmd.split('-I', 1)
-                        self.process_ascii('-I' + proc_cmd)
+                        self.process_ascii(name, '-I' + proc_cmd)
+            else:
+                # process ascii events from embedded tracker
+                while '\n' in buffered_ascii:
+                    cmd, buffered_ascii = buffered_ascii.split('\n', 1)
+                    if '-T' in cmd:
+                        dbg, proc_cmd = cmd.split('-T', 1)
+                        self.process_ascii(name, '-T' + proc_cmd)
 
-    def process_ascii(self, message):
+
+    def process_ascii(self, name, message):
         try:
             # handle sensory data
             if message[:2] == '-I':
@@ -424,16 +416,17 @@ class OmniArmBot(nstbot.NSTBot):
                 # TODO: do we need to track more than one frequency per retina? 
                 # if yes, how do we get the information about the current frequency from the incoming message?
                 # in this case we need to make adjustments accodringly here, in the get_tracker function and in the firmware
+                # Update: up to 8 tracked frequencies are possible for each retina (arcodring changes need test)
                 if len(trk_data) > 5:
                     trk_id = trk_data[0]        # uDVS tracker id
                     trk_xpos = trk_data[1:5]    # xpos 4byte HEX, scale = 2^16
                     trk_ypos = trk_data[5:9]    # ypos 4byte HEX, scale = 2^16
                     trk_rad = trk_data[9:11]    # tracking radius 2byte HEX, scale = 2^8
                     trk_cert = trk_data[11:13]  # tracking certainty 2byte HEX, scale = 2^8
-                    self.trk_px[trk_id] = float.fromhex(trk_xpos)*(2**16-1)
-                    self.trk_py[trk_id] = float.fromhex(trk_ypos)*(2**16-1)
-                    self.trk_radius[trk_id] = float.fromhex(trk_rad)*(2**8-1)
-                    self.trk_certainty[trk_id] = float.fromhex(trk_cert)*(2**8-1)
+                    self.trk_px[name][trk_id] = float.fromhex(trk_xpos)*(2**16-1)
+                    self.trk_py[name][trk_id] = float.fromhex(trk_ypos)*(2**16-1)
+                    self.trk_radius[name][trk_id] = float.fromhex(trk_rad)*(2**8-1)
+                    self.trk_certainty[name][trk_id] = float.fromhex(trk_cert)*(2**8-1)
         except:
             pass
             # print('Error processing "%s"' % message)
@@ -563,12 +556,6 @@ class OmniArmBot(nstbot.NSTBot):
         return x, y, self.track_certainty[name][index]
 
     def get_tracker_info(self, name):
-        if "left" in name:
-            trid = 0
-        elif "right" in name:
-            trid = 1
-        else:
-            trid = 2
-        x = self.trk_px[trid]/ 64.0 - 1
-        y = - self.trk_py[trid]/ 64.0 + 1
-        return x, y, self.trk_radius[trid], self.trk_certainty[trid]
+        x = self.trk_px[name]/ 64.0 - 1
+        y = - self.trk_py[name]/ 64.0 + 1
+        return x, y, self.trk_radius[name], self.trk_certainty[name]
