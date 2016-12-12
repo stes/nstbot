@@ -183,7 +183,7 @@ class OmniArmBotNetwork(nengo.Network):
                                     self.p_freqs_neurons_spikes[name] = nengo.Probe(self.freqs_neurons[name].neurons, "spikes")
                                     self.p_freqs_neurons_vol[name] = nengo.Probe(self.freqs_neurons[name].neurons, "voltage")
                         if tracker:
-                            self.trackers[name] = TrackerNode(self.bot, name, tr_freq=freqs, streaming_period=receive_msg_period)
+                            self.trackers[name] = TrackerNode(self.bot, name, tr_freq=freqs, st_freq=receive_msg_period)
 
                             if n_neurons_p_dim is not None:
                                 dim = self.trackers[name].get_output_dim()
