@@ -45,12 +45,11 @@ class OmniArmBot(nstbot.NSTBot):
                 self.p_y[name] = None
                 self.track_certainty[name] = None
                 self.last_timestamp[name] = None
- 
-                # initialize variables for embedded tracker           
-                self.trk_px[name] = np.zeros(8)
-                self.trk_py[name] = np.zeros(8)
-                self.trk_radius[name] = np.zeros(8)
-                self.trk_certainty[name] = np.zeros(8)
+                # initialize variables for embedded tracker
+                self.trk_px[name] = np.zeros_like(np.array(range(8)))
+                self.trk_py[name] = np.zeros_like(np.array(range(8)))
+                self.trk_radius[name] = np.zeros_like(np.array(range(8)))
+                self.trk_certainty[name] = np.zeros_like(np.array(range(8)))
         self.sensor = {}
         self.sensor_scale = {}
         self.sensor_map = {}
@@ -187,9 +186,10 @@ class OmniArmBot(nstbot.NSTBot):
             if "retina" not in name:
                 self.connection.send(name,'!E0\n')  # disable command echo (save some bandwidth)
                 time.sleep(1)
-            else:
-                self.connection.send(name, 'E+\n')
-                time.sleep(1)
+            # FIXME for the embedded tracker to work and not have 2 streams simultaneously
+            # else:
+            #     self.connection.send(name, 'E+\n')
+            #     time.sleep(1)
             self.set_arm_speed(20)
             time.sleep(0.5)
             self.conn_thread[name] = threading.Thread(target=self.sensor_loop, args=(name,))
@@ -204,6 +204,7 @@ class OmniArmBot(nstbot.NSTBot):
                 self.connection.send(name, 'R\n')
             else:
                 self.retina(name, False)
+                self.tracker(name, False)
             # for process in multiprocessing.active_children():
             #     if process.is_alive():
             #         process.join()
@@ -215,7 +216,9 @@ class OmniArmBot(nstbot.NSTBot):
     def retina(self, name, active, bytes_in_timestamp=4):
         if active:
             assert bytes_in_timestamp in [0, 2, 3, 4]
-            cmd = '!E%d\nE+\n' % bytes_in_timestamp
+            # FIXME for the embedded tracker to work and not have 2 streams simultaneously
+            #cmd = '!E%d\nE+\n' % bytes_in_timestamp
+            cmd = '!E%d\n' % bytes_in_timestamp
             self.retina_packet_size[name] = 2 + bytes_in_timestamp
         else:
             cmd = 'E-\n'
@@ -224,13 +227,14 @@ class OmniArmBot(nstbot.NSTBot):
 
     def tracker(self, name, active, tracking_freqs, streaming_period):
         # calculate tracking period from frequency
-        tracking_periods = np.array([int(np.ceil(freq*1000*1000)) for freq in tracking_freqs]) 
-
+        tracking_periods = np.array([int(np.ceil((1.0 / freq) * 1000 * 1000)) for freq in tracking_freqs])
         if active:
             # initalize all channels to zero
             for channel in range(8):
                 cmd = '!TD%d=0\n' % channel
                 self.connection.send(name, cmd)
+            # make sure we disconnect the event stream
+            self.connection.send(name, 'E-\n')
 
 
         for channel, tracking_period in enumerate(tracking_periods):
@@ -238,9 +242,8 @@ class OmniArmBot(nstbot.NSTBot):
                 # now set all channels, which are specified for tracking
                 cmd = '!TD%d=%d\n!TR=%d\n' % (channel, tracking_period, streaming_period)
             else:
-                cmd = '!TD%d=0\n!TR=0\n' % (channel)
-            
-        self.connection.send(name, cmd)
+                cmd = '!TD%d=0\n!TR=0\n' % channel
+            self.connection.send(name, cmd)
 
 
     def show_image(self, name, decay=0.5, display_mode='quick'):
@@ -390,7 +393,6 @@ class OmniArmBot(nstbot.NSTBot):
                     if '-T' in cmd:
                         dbg, proc_cmd = cmd.split('-T', 1)
                         self.process_ascii(name, '-T' + proc_cmd)
-
 
     def process_ascii(self, name, message):
         try:

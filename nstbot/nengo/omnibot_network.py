@@ -133,8 +133,9 @@ class OmniArmBotNetwork(nengo.Network):
         for name in self.bot.adress_list:
             if 'retina' in name:
                 self.bot.retina(name, True)
-                if tracker:    
-                    self.bot.tracker(name=name, active=True, tracking_freqs=freqs, streaming_period=receive_msg_period)
+                if tracker:
+                    self.bot.tracker(name=name, active=True, tracking_freqs=freqs,
+                                     streaming_period=receive_msg_period*1000*1000)  # periods in us
                 else:
                     self.bot.track_frequencies(name, freqs=freqs)
 
