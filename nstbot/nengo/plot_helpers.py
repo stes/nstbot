@@ -1,4 +1,3 @@
-# FIXME: implement probing for embedded DVS tracking and fix labels for python frequency tracking!
 def plot_function(bot, sim, b_plot_spikes=False):
     if bot.b_probe:
         import matplotlib.pyplot as plt
@@ -30,6 +29,7 @@ def plot_function(bot, sim, b_plot_spikes=False):
             for name in bot.bot.adress_list:
                 if "retina" in name:
                     n_freqs = int(bot.freqs[name].get_output_dim()/3.0)
+                    # FIXME: label needs fixing. the data for three tracked stimuli looks like [x1,x2,x3,y1,y2,y3,c1,c2,c3]
                     labels = ["x", "y", "certainty"]*n_freqs
                     plt.figure("freqs_" + name)
                     plt.subplot(211)
@@ -43,6 +43,23 @@ def plot_function(bot, sim, b_plot_spikes=False):
                         # Plot the spiking output of the ensemble
                         plt.figure("freqs spikes")
                         rasterplot(sim.trange(), sim.data[bot.p_freqs_neurons_spikes])
+        elif bot.b_tracker:
+            if "retina" in name:
+                n_freqs = int(bot.trackers[name].get_output_dim()/4.0)
+                # FIXME: label needs fixing. the data for three tracked stimuli looks like [x1,x2,x3,y1,y2,y3,r1,r2,r3,c1,c2,c3]
+                labels = ["x", "y", "radius", "certainty"]*n_freqs
+                plt.figure("trackers_" + name)
+                plt.subplot(211)
+                plt.plot(sim.trange(), sim.data[bot.p_trackers_out[name]])
+                plt.legend(labels, prop=fontP)
+                plt.subplot(212)
+                plt.plot(sim.trange(), sim.data[bot.p_trackers_neurons_out[name]])
+                plt.legend(labels, prop=fontP)
+
+                if b_plot_spikes:
+                    # Plot the spiking output of the ensemble
+                    plt.figure("freqs spikes")
+                    rasterplot(sim.trange(), sim.data[bot.p_trackers_neurons_spikes])
 
         if bool(bot.b_sensors):
             sensor_labels = ["v1", "v2", "v3", "v4", "v5"]
