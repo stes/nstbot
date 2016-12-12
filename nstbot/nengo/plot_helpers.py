@@ -1,3 +1,4 @@
+# FIXME: implement probing for embedded DVS tracking and fix labels for python frequency tracking!
 def plot_function(bot, sim, b_plot_spikes=False):
     if bot.b_probe:
         import matplotlib.pyplot as plt
