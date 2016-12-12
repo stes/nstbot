@@ -204,7 +204,6 @@ class OmniArmBot(nstbot.NSTBot):
                 self.connection.send(name, 'R\n')
             else:
                 self.retina(name, False)
-                self.tracker(name, False)
             # for process in multiprocessing.active_children():
             #     if process.is_alive():
             #         process.join()
@@ -390,7 +389,8 @@ class OmniArmBot(nstbot.NSTBot):
                 # process ascii events from embedded tracker
                 while '\n' in buffered_ascii:
                     cmd, buffered_ascii = buffered_ascii.split('\n', 1)
-                    if '-T' in cmd:
+                    # make sure we discard the echo
+                    if '-T' in cmd and 'R' not in cmd and '(' not in cmd:
                         dbg, proc_cmd = cmd.split('-T', 1)
                         self.process_ascii(name, '-T' + proc_cmd)
 
@@ -423,20 +423,20 @@ class OmniArmBot(nstbot.NSTBot):
             if message[:2] == '-T':
                 trk_data = message[2:]
                 # make sure, that the message is not the DVS confirmation msg:
-                # TODO: do we need to track more than one frequency per retina? 
+                # TODO: do we need to track more than one frequency per retina?
                 # if yes, how do we get the information about the current frequency from the incoming message?
                 # in this case we need to make adjustments accodringly here, in the get_tracker function and in the firmware
-                # Update: up to 8 tracked frequencies are possible for each retina (arcodring changes need test)
+                # Update: up to 8 tracked frequencies are possible for each retina (acording changes need test)
                 if len(trk_data) > 5:
                     trk_id = trk_data[0]        # uDVS tracker id
-                    trk_xpos = trk_data[1:5]    # xpos 4byte HEX, scale = 2^16
-                    trk_ypos = trk_data[5:9]    # ypos 4byte HEX, scale = 2^16
-                    trk_rad = trk_data[9:11]    # tracking radius 2byte HEX, scale = 2^8
-                    trk_cert = trk_data[11:13]  # tracking certainty 2byte HEX, scale = 2^8
-                    self.trk_px[name][trk_id] = float.fromhex(trk_xpos)*(2**16-1)
-                    self.trk_py[name][trk_id] = float.fromhex(trk_ypos)*(2**16-1)
-                    self.trk_radius[name][trk_id] = float.fromhex(trk_rad)*(2**8-1)
-                    self.trk_certainty[name][trk_id] = float.fromhex(trk_cert)*(2**8-1)
+                    trk_xpos = trk_data[1:5]    # xpos 4byte HEX
+                    trk_ypos = trk_data[5:9]    # ypos 4byte HEX
+                    trk_rad = trk_data[9:11]    # tracking radius 2byte HEX
+                    trk_cert = trk_data[11:13]  # tracking certainty 2byte HEX
+                    self.trk_px[name][trk_id] = float.fromhex(trk_xpos)
+                    self.trk_py[name][trk_id] = float.fromhex(trk_ypos)
+                    self.trk_radius[name][trk_id] = float.fromhex(trk_rad)
+                    self.trk_certainty[name][trk_id] = float.fromhex(trk_cert)
         except:
             pass
             # print('Error processing "%s"' % message)

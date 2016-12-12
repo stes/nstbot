@@ -83,11 +83,11 @@ class SensorNode(nengo.Node):
 class TrackerNode(nengo.Node):
     def __init__(self, bot, name, tr_freq, st_freq):
         super(TrackerNode, self).__init__(self.tracked_freqs, label=name,
-                                            size_in=0, size_out=4*len(tr_freq))
+                                            size_in=0, size_out=4*8)
         self.bot = bot
         self.name = name
         self.msg_period = st_freq
-        self.result = np.zeros(4*len(tr_freq), dtype='float')
+        self.result = np.zeros(4*8, dtype='float')
 
     def tracked_freqs(self, t):
         return self.bot.get_tracker_info(self.name)
@@ -134,8 +134,7 @@ class OmniArmBotNetwork(nengo.Network):
             if 'retina' in name:
                 self.bot.retina(name, True)
                 if tracker:
-                    self.bot.tracker(name=name, active=True, tracking_freqs=freqs,
-                                     streaming_period=receive_msg_period*1000*1000)  # periods in us
+                    self.bot.tracker(name=name, active=True, tracking_freqs=freqs, streaming_period=receive_msg_period*1000*1000)  # periods in us
                 else:
                     self.bot.track_frequencies(name, freqs=freqs)
 
