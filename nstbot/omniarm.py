@@ -47,10 +47,10 @@ class OmniArmBot(nstbot.NSTBot):
                 self.last_timestamp[name] = None
  
                 # initialize variables for embedded tracker           
-                self.trk_px[name] = [None]*8
-                self.trk_py[name] = [None]*8
-                self.trk_radius[name] = [None]*8
-                self.trk_certainty[name] = [None]*8
+                self.trk_px[name] = np.array([None]*8)
+                self.trk_py[name] = np.array([None]*8)
+                self.trk_radius[name] = np.array([None]*8)
+                self.trk_certainty[name] = np.array([None]*8)
         self.sensor = {}
         self.sensor_scale = {}
         self.sensor_map = {}

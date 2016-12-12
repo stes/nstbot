@@ -81,13 +81,13 @@ class SensorNode(nengo.Node):
 
 
 class TrackerNode(nengo.Node):
-    def __init__(self, name, bot, tr_freq, st_freq):
+    def __init__(self, bot, name, tr_freq, st_freq):
         super(TrackerNode, self).__init__(self.tracked_freqs, label=name,
                                             size_in=0, size_out=4*len(tr_freq))
         self.bot = bot
         self.name = name
         self.msg_period = st_freq
-        self.result = np.zeros(4*len(, dtype='float')
+        self.result = np.zeros(4*len(tr_freq), dtype='float')
 
     def tracked_freqs(self, t):
         return self.bot.get_tracker_info(self.name)
@@ -134,7 +134,7 @@ class OmniArmBotNetwork(nengo.Network):
             if 'retina' in name:
                 self.bot.retina(name, True)
                 if tracker:    
-                    self.bot.tracker(name=name, active=True, tracking_freq=freqs, streaming_period=receive_msg_period)
+                    self.bot.tracker(name=name, active=True, tracking_freqs=freqs, streaming_period=receive_msg_period)
                 else:
                     self.bot.track_frequencies(name, freqs=freqs)
 
@@ -183,7 +183,7 @@ class OmniArmBotNetwork(nengo.Network):
                                     self.p_freqs_neurons_spikes[name] = nengo.Probe(self.freqs_neurons[name].neurons, "spikes")
                                     self.p_freqs_neurons_vol[name] = nengo.Probe(self.freqs_neurons[name].neurons, "voltage")
                         if tracker:
-                            self.trackers[name] = TrackerNode(self.bot, name, tracking_freq=freqs, streaming_period=receive_msg_period)
+                            self.trackers[name] = TrackerNode(self.bot, name, tr_freq=freqs, streaming_period=receive_msg_period)
 
                             if n_neurons_p_dim is not None:
                                 dim = self.trackers[name].get_output_dim()
