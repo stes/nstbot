@@ -30,6 +30,7 @@ with model:
             return [-0.5, -0.5, -0.5]
 
     ctrl_base = nengo.Node(ctrl_base_func)
+    #ctrl_base = nengo.Node([0.0, 0.0, 0.0])
     nengo.Connection(ctrl_base, bot.base)
 
     def ctrl_arm_func(t):

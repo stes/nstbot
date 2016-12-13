@@ -138,10 +138,7 @@ class OmniArmBot(nstbot.NSTBot):
 
         # indices for motor IDs
         cmd = '!r%d,%d,%d\n' % (shoulder, elbow, hand)
-        if abs(float(gripper - 1)) < 0.0001:
-            grip = '!y\n'
-        else:
-            grip = '!x\n'
+        grip = '!f%d\n' % int(gripper*100)
         cmd += grip
         self.send('motors', 'arm', cmd, msg_period=msg_period)
 
