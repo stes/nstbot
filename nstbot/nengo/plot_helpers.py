@@ -29,7 +29,6 @@ def plot_function(bot, sim, b_plot_spikes=False):
             for name in bot.bot.adress_list:
                 if "retina" in name:
                     n_freqs = int(bot.freqs[name].get_output_dim()/3.0)
-                    # FIXME: label needs fixing. the data for three tracked stimuli looks like [x1,x2,x3,y1,y2,y3,c1,c2,c3]
                     labels = ["x", "y", "certainty"]*n_freqs
                     plt.figure("freqs_" + name)
                     plt.subplot(211)
@@ -46,7 +45,6 @@ def plot_function(bot, sim, b_plot_spikes=False):
         elif bot.b_tracker:
             if "retina" in name:
                 n_freqs = int(bot.trackers[name].get_output_dim()/4.0)
-                # FIXME: label needs fixing. the data for three tracked stimuli looks like [x1,x2,x3,y1,y2,y3,r1,r2,r3,c1,c2,c3]
                 labels = ["x", "y", "radius", "certainty"]*n_freqs
                 plt.figure("trackers_" + name)
                 plt.subplot(211)
