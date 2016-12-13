@@ -5,6 +5,7 @@ import signal
 import sys
 import plot_helpers as ph
 
+#nengo.log("debug")
 model = nengo.Network()
 with model:
     address_list = {'retina_left': ['10.162.177.29', 54320],

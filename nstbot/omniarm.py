@@ -565,7 +565,7 @@ class OmniArmBot(nstbot.NSTBot):
         y = - self.p_y[name][index] / 64.0 + 1
         return x, y, self.track_certainty[name][index]
 
-    def get_tracker_info(self, name):
-        x = self.trk_px[name]/ 64.0 - 1
-        y = - self.trk_py[name]/ 64.0 + 1
-        return x, y, self.trk_radius[name], self.trk_certainty[name]
+    def get_tracker_info(self, name, index):
+        x = self.trk_px[name][index]/ 64.0 - 1
+        y = - self.trk_py[name][index]/ 64.0 + 1
+        return x, y, self.trk_radius[name][index], self.trk_certainty[name][index]

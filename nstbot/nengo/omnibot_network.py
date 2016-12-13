@@ -90,7 +90,9 @@ class TrackerNode(nengo.Node):
         self.result = np.zeros(4*8, dtype='float')
 
     def tracked_freqs(self, t):
-        return self.bot.get_tracker_info(self.name)
+        for i in range(8):
+            self.result[i * 4 : (i + 1) * 4] = self.bot.get_tracker_info(self.name, i)
+        return self.result
 
     def get_output_dim(self):
         return len(self.result)
