@@ -230,7 +230,7 @@ class OmniArmBot(nstbot.NSTBot):
         if active:
             # initalize all channels to zero
             for channel in range(8):
-                cmd = '!TD%d=0\n' % channel
+                cmd = '!TD%d=0\n!TR=0\n' % channel
                 self.connection.send(name, cmd)
             # make sure we disconnect the event stream
             self.connection.send(name, 'E-\n')

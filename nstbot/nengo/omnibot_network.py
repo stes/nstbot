@@ -82,7 +82,7 @@ class SensorNode(nengo.Node):
 
 class TrackerNode(nengo.Node):
     def __init__(self, bot, name, tr_freq, st_freq):
-        super(TrackerNode, self).__init__(self.tracked_freqs, label=name,
+        super(TrackerNode, self).__init__(self.tracked_freqs, label=name+"_emb_tracker",
                                             size_in=0, size_out=4*8)
         self.bot = bot
         self.name = name
