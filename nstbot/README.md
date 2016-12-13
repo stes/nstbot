@@ -9,7 +9,7 @@ the specific sensors and send specific control commands to the Omniarmbot platfo
 
 - ```base()``` sets speed for the 3 individual wheels of the base (range ```[-100, 100]```)
 - ```base_pos()``` sets the complex driving command 3 values, ```[x, y, heading angle]``` with respect to the current position in 2D space (range ```[-100, 100]```)
-- ```arm()``` sets the joints to the 3 joints (counted from the base): shoulder, elbow, hand (without rotation) and gripper (open/close). The input values of three joints are set in the interval ```[0,2xPI]``` while the input for the gripper is 0 resp. 1 for open resp. close.
+- ```arm()``` sets the joints to the 3 joints (counted from the base): shoulder, elbow, hand (without rotation) and gripper. The input values of three joints are set in the interval ```[0,2xPI]``` while the input for the gripper is set in the interval ```[0,1]``` where 0 means completely closed and 1 means completely open. To grasp our example objects use 0.7 as input value for the gripper.
 - ```set_arm_speed()``` sets the speed for the arm motors within the range ```[0,1024]```. Note: 0 does not mean zero velocity, but is instead actually the maximal value (so be careful when setting the speed of the arm motors)
 - ```tracker()``` starts the embedded uDVS tracker algorithm. Input to this function is currently a list of frequencies ```freqs=[f1,...,fn]``` and the ```name``` of the retina.
 - ```get_tracker_info()``` returns the tracker output ```(x,y,radius,certainty)``` of the tracked stimulus with id ```index``` for the retina given by ```name```
