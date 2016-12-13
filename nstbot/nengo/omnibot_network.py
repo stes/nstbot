@@ -163,7 +163,7 @@ class OmniArmBotNetwork(nengo.Network):
                         self.p_arm_neurons_out = nengo.Probe(self.arm_neurons, synapse=0.01)
                         self.p_arm_neurons_spikes = nengo.Probe(self.arm_neurons.neurons, "spikes")
                         self.p_arm_neurons_vol = nengo.Probe(self.arm_neurons.neurons, "voltage")
-            if retina or freqs:
+            if retina or freqs or tracker:
                 names = connection.get_socket_keys()
                 for name in names:
                     if "retina" in name:
