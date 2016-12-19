@@ -55,7 +55,7 @@ class OmniArmBot(nstbot.NSTBot):
         self.sensor_map = {}
         self.add_sensor('bump', bit=0, range=1, length=1)
         # we have 8 values but we take only the first 3 vals (base motors)
-        self.add_sensor('wheel', bit=1, range=100, length=3)  
+        self.add_sensor('wheel', bit=1, range=100, length=3)
         # the hex encoded values need conversion
         # we have 4 values but we take only the first 3 vals
         # gyro is measured in deg/s and Q16 encoded
@@ -71,7 +71,7 @@ class OmniArmBot(nstbot.NSTBot):
         # we have 8 values but we only take the last 5 (arm motors)
         self.add_sensor('servo', bit=7, range=4096, length=5)
         # we have 8 values but we only take the last 5 (arm motors)
-        self.add_sensor('load', bit=9, range=4096, length=5) 
+        self.add_sensor('load', bit=9, range=4096, length=5)
         self.sensor_bitmap = {"bump": [19, slice(0, 1)],
                               "wheel": [17,slice(0, 3)],
                               "gyro": [4,slice(0, 3)],
@@ -81,7 +81,7 @@ class OmniArmBot(nstbot.NSTBot):
                               "servo": [16, slice(3, 8)],
                               "load": [14, slice(3, 8)]}
         self.base([0.0, 0.0, 0.0])
-        self.arm([np.pi, np.pi, np.pi, 0])
+        #self.arm([np.pi, np.pi, np.pi, 1])
 
     def base(self, spd, msg_period=None):
         val_range = 100
@@ -112,7 +112,7 @@ class OmniArmBot(nstbot.NSTBot):
         if y < -val_range: y = -val_range
         if rot > val_range: rot = val_range
         if rot < -val_range: rot = -val_range
-        cmd = '!D%d,%d,%d\n' % (x, y, rot)
+        cmd = '!DD%d,%d,%d\n' % (x, y, rot)
         self.send('motors', 'base_pos', cmd, msg_period=msg_period)
 
     def arm(self, joints, msg_period=None):
@@ -138,6 +138,9 @@ class OmniArmBot(nstbot.NSTBot):
 
         # indices for motor IDs
         cmd = '!r%d,%d,%d\n' % (shoulder, elbow, hand)
+
+        #cmd = '!G3%d\n!G4%d\n!G5%d\n' % (shoulder/10, elbow/10, hand/10)
+
         grip = '!f%d\n' % int(gripper*100)
         cmd += grip
         self.send('motors', 'arm', cmd, msg_period=msg_period)
@@ -168,6 +171,7 @@ class OmniArmBot(nstbot.NSTBot):
     def send(self, name, key, message, msg_period=None):
         now = time.time()
         if msg_period is None or now > self.last_time.get(key, 0) + msg_period:
+            #print 'msg', name, message
             self.connection.send(name, message)
             self.last_time[key] = now
 
@@ -187,7 +191,7 @@ class OmniArmBot(nstbot.NSTBot):
             # else:
             #     self.connection.send(name, 'E+\n')
             #     time.sleep(1)
-            self.set_arm_speed(20)
+            self.set_arm_speed(10)
             time.sleep(0.5)
             self.conn_thread[name] = threading.Thread(target=self.sensor_loop, args=(name,))
             #self.conn_thread[name] = multiprocessing.Process(target=self.sensor_loop, args=(name,))
@@ -198,15 +202,16 @@ class OmniArmBot(nstbot.NSTBot):
         for name in self.adress_list:
             if 'retina' not in name:
                 self.connection.send(name, '!I0\n')
-                self.connection.send(name, 'R\n')
+                #self.connection.send(name, 'R\n')
             else:
                 self.retina(name, False)
+                self.tracker(name, False, [], 10000)
             # for process in multiprocessing.active_children():
             #     if process.is_alive():
             #         process.join()
             #     process.terminate()
-        self.base([0, 0, 0])
-        self.arm([np.pi, np.pi, np.pi, 0])
+        #self.base([0, 0, 0])
+        #self.arm([np.pi, np.pi, np.pi, 1])
         super(OmniArmBot, self).disconnect()
 
     def retina(self, name, active, bytes_in_timestamp=4):
@@ -374,7 +379,7 @@ class OmniArmBot(nstbot.NSTBot):
                     # now process those retina events
                     if "retina" in name:
                         self.process_retina(name, data_all)
-                
+
             if "retina" not in name:
                 # and process the ascii events too from the base and arm sensors
                 while '\n\n' in buffered_ascii:
@@ -417,7 +422,7 @@ class OmniArmBot(nstbot.NSTBot):
                             self.sensor[index] = sensors
                             self.sensor[self.sensor_map[index]] = sensors
             # handle uDVS tracker data
-            if message[:2] == '-T':
+            elif message[:2] == '-T':
                 trk_data = message[2:]
                 # make sure, that the message is not the DVS confirmation msg:
                 # TODO: do we need to track more than one frequency per retina?
@@ -434,11 +439,12 @@ class OmniArmBot(nstbot.NSTBot):
                     self.trk_py[name][trk_id] = float.fromhex(trk_ypos)
                     self.trk_radius[name][trk_id] = float.fromhex(trk_rad)
                     self.trk_certainty[name][trk_id] = float.fromhex(trk_cert)
+            else:
+                print('unknown message: %s\n' % message)
         except:
-            pass
-            # print('Error processing "%s"' % message)
-            # import traceback
-            # traceback.print_exc()
+            print('Error processing "%s"' % message)
+            import traceback
+            traceback.print_exc()
 
     last_timestamp = None
 
@@ -563,6 +569,7 @@ class OmniArmBot(nstbot.NSTBot):
         return x, y, self.track_certainty[name][index]
 
     def get_tracker_info(self, name, index):
-        x = self.trk_px[name][index]/ 64.0 - 1
-        y = - self.trk_py[name][index]/ 64.0 + 1
-        return x, y, self.trk_radius[name][index], self.trk_certainty[name][index]
+        x = self.trk_px[name][index]/ 1024.0 - 1
+        y = - self.trk_py[name][index]/ 1024.0 + 1
+        c = self.trk_certainty[name][index] / 255.0
+        return x, y, self.trk_radius[name][index], c
