@@ -34,6 +34,9 @@ class OmniArmBot(nstbot.NSTBot):
         self.trk_py = {}
         self.trk_radius = {}
         self.trk_certainty = {}
+        # 'regular' vs 'blob'
+        self.trk_mode = {}
+        self.trk_regular_mode_before = {}
 
         for name in self.adress_list:
             if "retina" in name:
@@ -146,8 +149,8 @@ class OmniArmBot(nstbot.NSTBot):
         self.send('motors', 'arm', cmd, msg_period=msg_period)
 
     def set_arm_speed(self, x, msg_period=None):
-        if x > 0:
-            self.send('motors', 'arm', '!P3%d\n!P4%d\n!P5%d\n!P750\n' % (x, x, x), msg_period=msg_period)
+        if x != [] and all(x) > 0:
+            self.send('motors', 'arm', '!P3%d\n!P4%d\n!P5%d\n!P750\n' % (x[0], x[1], x[2]), msg_period=msg_period)
         else:
             self.send('motors', 'arm', '!P35\n!P45\n!P55\n', msg_period=msg_period)
 
@@ -191,7 +194,7 @@ class OmniArmBot(nstbot.NSTBot):
             # else:
             #     self.connection.send(name, 'E+\n')
             #     time.sleep(1)
-            self.set_arm_speed(10)
+            self.set_arm_speed([10,10,10])
             time.sleep(0.5)
             self.conn_thread[name] = threading.Thread(target=self.sensor_loop, args=(name,))
             #self.conn_thread[name] = multiprocessing.Process(target=self.sensor_loop, args=(name,))
@@ -226,25 +229,48 @@ class OmniArmBot(nstbot.NSTBot):
             self.retina_packet_size[name] = None
         self.connection.send(name, cmd)
 
-    def tracker(self, name, active, tracking_freqs, streaming_period):
+    def tracker(self, name, active, tracking_freqs, streaming_period, mode='regular'):
         # calculate tracking period from frequency
-        tracking_periods = np.array([int(np.ceil((1.0 / freq) * 1000 * 1000)) for freq in tracking_freqs])
-        if active:
-            # initalize all channels to zero
-            for channel in range(8):
-                cmd = '!TD%d=0\n!TR=0\n' % channel
-                self.connection.send(name, cmd)
-            # make sure we disconnect the event stream
-            self.connection.send(name, 'E-\n')
+        self.trk_mode[name] = mode
+
+        if mode == 'regular':
+            if name not in self.trk_regular_mode_before.keys():
+                
+                tracking_periods = np.array([int(np.ceil((1.0 / freq) * 1000 * 1000)) for freq in tracking_freqs])
+                if active:
+                    # initalize all channels to zero
+                    for channel in range(8):
+                        cmd = '!TD%d=0\n!TR=0\n' % channel
+                        self.connection.send(name, cmd)
+                    # make sure we disconnect the event stream
+                    self.connection.send(name, 'E-\n')
 
 
-        for channel, tracking_period in enumerate(tracking_periods):
-            if active:
-                # now set all channels, which are specified for tracking
-                cmd = '!TD%d=%d\n!TR=%d\n' % (channel, tracking_period, streaming_period)
+                for channel, tracking_period in enumerate(tracking_periods):
+                    if active:
+                        # now set all channels, which are specified for tracking
+                        cmd = '!TD%d=%d\n!TR=%d\n' % (channel, tracking_period, streaming_period)
+                    else:
+                        cmd = '!TD%d=0\n!TR=0\n' % channel
+                    self.connection.send(name, cmd)
+
+                self.trk_regular_mode_before[name] = True
             else:
-                cmd = '!TD%d=0\n!TR=0\n' % channel
+                # check if regular mode has been active before, if yes restore it
+                if self.trk_regular_mode_before[name]:
+                    cmd = '!T.=0\n!BD7\n!TR=%d' % streaming_period
+                    self.connection.send(name, cmd)
+
+        elif mode =='blob':
+            # change the mode to blob tracking
+            cmd = '!TR=0\n!BD6\n!T.=%d' % streaming_period
             self.connection.send(name, cmd)
+        else:
+            print 'unknown tracker mode specification! Use regular or blob'
+
+
+    def get_tracker_mode(self, name):
+        return self.trk_mode[name]
 
 
     def show_image(self, name, decay=0.5, display_mode='quick'):
@@ -430,15 +456,37 @@ class OmniArmBot(nstbot.NSTBot):
                 # in this case we need to make adjustments accodringly here, in the get_tracker function and in the firmware
                 # Update: up to 8 tracked frequencies are possible for each retina (acording changes need test)
                 if len(trk_data) > 5:
-                    trk_id = trk_data[0]        # uDVS tracker id
-                    trk_xpos = trk_data[1:5]    # xpos 4byte HEX
-                    trk_ypos = trk_data[5:9]    # ypos 4byte HEX
-                    trk_rad = trk_data[9:11]    # tracking radius 2byte HEX
-                    trk_cert = trk_data[11:13]  # tracking certainty 2byte HEX
-                    self.trk_px[name][trk_id] = float.fromhex(trk_xpos)
-                    self.trk_py[name][trk_id] = float.fromhex(trk_ypos)
-                    self.trk_radius[name][trk_id] = float.fromhex(trk_rad)
-                    self.trk_certainty[name][trk_id] = float.fromhex(trk_cert)
+                    if name not in self.trk_mode.keys():
+                        trk_id = trk_data[0]        # uDVS tracker id
+                        trk_xpos = trk_data[1:5]    # xpos 4byte HEX
+                        trk_ypos = trk_data[5:9]    # ypos 4byte HEX
+                        trk_rad = trk_data[9:11]    # tracking radius 2byte HEX
+                        trk_cert = trk_data[11:13]  # tracking certainty 2byte HEX
+                        self.trk_px[name][trk_id] = float.fromhex(trk_xpos)
+                        self.trk_py[name][trk_id] = float.fromhex(trk_ypos)
+                        self.trk_radius[name][trk_id] = float.fromhex(trk_rad)
+                        self.trk_certainty[name][trk_id] = float.fromhex(trk_cert)
+                    else:
+
+                        if self.trk_mode[name] == 'regular':
+                            trk_id = trk_data[0]        # uDVS tracker id
+                            trk_xpos = trk_data[1:5]    # xpos 4byte HEX
+                            trk_ypos = trk_data[5:9]    # ypos 4byte HEX
+                            trk_rad = trk_data[9:11]    # tracking radius 2byte HEX
+                            trk_cert = trk_data[11:13]  # tracking certainty 2byte HEX
+                            self.trk_px[name][trk_id] = float.fromhex(trk_xpos)
+                            self.trk_py[name][trk_id] = float.fromhex(trk_ypos)
+                            self.trk_radius[name][trk_id] = float.fromhex(trk_rad)
+                            self.trk_certainty[name][trk_id] = float.fromhex(trk_cert)
+                        elif self.trk_mode[name] == 'blob':
+                            trk_xpos = trk_data[1:5]    # xpos 4byte HEX
+                            trk_ypos = trk_data[5:9]    # ypos 4byte HEX
+                            trk_rad = trk_data[9:11]    # tracking radius 2byte HEX
+                            # for the blob tracking, we do not have an id (actually the first character is a ".")
+                            # therefore we set the tracker inforamtion to the very first variable in the dictionary
+                            self.trk_px[name][0] = float.fromhex(trk_xpos)
+                            self.trk_py[name][0] = float.fromhex(trk_ypos)
+                            self.trk_radius[name][0] = float.fromhex(trk_rad)
             else:
                 print('unknown message: %s\n' % message)
         except:
