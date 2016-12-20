@@ -150,7 +150,7 @@ class OmniArmBot(nstbot.NSTBot):
 
     def set_arm_speed(self, x, msg_period=None):
         if x != [] and all(x) > 0:
-            self.send('motors', 'arm', '!P3%d\n!P4%d\n!P5%d\n!P750\n' % (x[0], x[1], x[2]), msg_period=msg_period)
+            self.send('motors', 'arm', '!P3%d\n!P4%d\n!P5%d\n!P7%d\n' % (x[0], x[1], x[2], x[3]), msg_period=msg_period)
         else:
             self.send('motors', 'arm', '!P35\n!P45\n!P55\n', msg_period=msg_period)
 
@@ -194,7 +194,7 @@ class OmniArmBot(nstbot.NSTBot):
             # else:
             #     self.connection.send(name, 'E+\n')
             #     time.sleep(1)
-            self.set_arm_speed([10,10,10])
+            self.set_arm_speed([10,10,10,10])
             time.sleep(0.5)
             self.conn_thread[name] = threading.Thread(target=self.sensor_loop, args=(name,))
             #self.conn_thread[name] = multiprocessing.Process(target=self.sensor_loop, args=(name,))
