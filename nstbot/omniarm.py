@@ -451,10 +451,6 @@ class OmniArmBot(nstbot.NSTBot):
             elif message[:2] == '-T':
                 trk_data = message[2:]
                 # make sure, that the message is not the DVS confirmation msg:
-                # TODO: do we need to track more than one frequency per retina?
-                # if yes, how do we get the information about the current frequency from the incoming message?
-                # in this case we need to make adjustments accodringly here, in the get_tracker function and in the firmware
-                # Update: up to 8 tracked frequencies are possible for each retina (acording changes need test)
                 if len(trk_data) > 5:
                     if name not in self.trk_mode.keys():
                         trk_id = trk_data[0]        # uDVS tracker id
@@ -479,6 +475,13 @@ class OmniArmBot(nstbot.NSTBot):
                             self.trk_radius[name][trk_id] = float.fromhex(trk_rad)
                             self.trk_certainty[name][trk_id] = float.fromhex(trk_cert)
                         elif self.trk_mode[name] == 'blob':
+                            # initially set all channels to zero values as we only have tracking information for one blob,
+                            # which we will write to the first channel
+                            self.trk_px[name] = np.zeros_like(np.array(range(8)))
+                            self.trk_py[name] = np.zeros_like(np.array(range(8)))
+                            self.trk_radius[name] = np.zeros_like(np.array(range(8)))
+                            self.trk_certainty[name] = np.zeros_like(np.array(range(8)))
+                            # now let's get the information from the tracker
                             trk_xpos = trk_data[1:5]    # xpos 4byte HEX
                             trk_ypos = trk_data[5:9]    # ypos 4byte HEX
                             trk_rad = trk_data[9:11]    # tracking radius 2byte HEX
