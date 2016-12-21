@@ -190,6 +190,10 @@ class OmniArmBot(nstbot.NSTBot):
             if "retina" not in name:
                 self.connection.send(name,'!E0\n')  # disable command echo (save some bandwidth)
                 time.sleep(1)
+            else:
+                # disable retina watch dog
+                self.connection.send(name,'WDTd\n') 
+
             # FIXME for the embedded tracker to work and not have 2 streams simultaneously
             # else:
             #     self.connection.send(name, 'E+\n')
