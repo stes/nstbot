@@ -192,7 +192,7 @@ class OmniArmBot(nstbot.NSTBot):
                 time.sleep(1)
             else:
                 # disable retina watch dog
-                self.connection.send(name,'WDTd\n') 
+                self.connection.send(name,'!WDTd\n') 
 
             # FIXME for the embedded tracker to work and not have 2 streams simultaneously
             # else:
