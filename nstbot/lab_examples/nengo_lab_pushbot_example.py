@@ -5,8 +5,7 @@ import nstbot
 bot = nstbot.PushBot()
 bot.connect(nstbot.Socket('10.162.177.89'))
 bot.retina(True)
-bot.laser(100)
-bot.track_frequencies([100, 100])
+bot.track_frequencies([100])
 bot.show_image()
 
 class Bot(nengo.Network):
@@ -44,9 +43,9 @@ class SensorTest(nengo.Network):
     def __init__(self, botnet):
         super(SensorTest, self).__init__()
         with self:
-            self.y_av = nengo.Ensemble(n_neurons=200, dimensions=1, radius=1.4)
+            self.stim = nengo.Ensemble(n_neurons=200, dimensions=2, radius=1.4)
 
-        nengo.Connection(botnet.tracked_points, self.y_av, transform=1.0/128.0, function=lambda x: (x[1]+x[3])/2.0)
+        nengo.Connection(botnet.tracked_points, self.stim, transform=1.0/128.0)
 
 
 class BehaviourControl(nengo.Network):
