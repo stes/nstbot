@@ -3,10 +3,10 @@ import numpy as np
 import nstbot
 
 bot = nstbot.PushBot()
-bot.connect(nstbot.Socket('10.162.177.89'))
+bot.connect(nstbot.Socket('10.162.177.108'))
 bot.retina(True)
-bot.track_frequencies([100])
-bot.show_image()
+bot.track_frequencies([600])
+#bot.show_image()
 
 class Bot(nengo.Network):
     def __init__(self, bot):
@@ -68,3 +68,13 @@ with model:
     turn_lr = TaskTurn(botnet)
     sens = SensorTest(botnet)
     bc = BehaviourControl([drive_fb, turn_lr])
+    
+    #diff = nengo.Ensemble(n_neurons=700, dimensions=2)
+    
+    #nengo.Connection(sens.stim, diff)
+    #nengo.Connection(diff, diff, synapse = 0.3, function = lambda x: -x)
+    
+    nengo.Connection(sens.stim[1], drive_fb.activation, synapse=None,
+                     function=lambda x: max(2 * (x - 0.5), 0))
+    nengo.Connection(sens.stim[0], turn_lr.activation, synapse=None,
+                    function=lambda x: 0.5 * (x - 0.5))
